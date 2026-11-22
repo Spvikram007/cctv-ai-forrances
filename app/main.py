@@ -20,6 +20,9 @@ from app.bootstrap import bootstrap_application
 from app.application_state import app_state
 from resources.styles.theme import DARK_THEME_QSS
 from modules.dashboard.dashboard_widget import DashboardWidget
+from modules.live_monitoring.live_view_widget import LiveViewWidget
+from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
+from engines.video_engine.stream_manager import stream_manager
 from core.workers.worker_manager import worker_manager
 from database.database_manager import db_manager
 
@@ -108,8 +111,12 @@ class MainWindow(QMainWindow):
         self.dashboard_widget = DashboardWidget()
         self.stack.addWidget(self.dashboard_widget)
 
-        # Views 1 to 14: Module Placeholders
-        for idx, (title, desc) in enumerate(self.NAV_ITEMS[1:], start=1):
+        # View 1: Live Monitoring Grid (1, 4, 9, 16 cameras)
+        self.live_view_widget = LiveViewWidget()
+        self.stack.addWidget(self.live_view_widget)
+
+        # Views 2 to 14: Module Placeholders
+        for idx, (title, desc) in enumerate(self.NAV_ITEMS[2:], start=2):
             phase_num = f"Phase {idx}" if idx < 12 else "Phase 12+"
             placeholder = ModulePlaceholderWidget(
                 module_title=f"{title.upper()}",
@@ -148,6 +155,12 @@ class MainWindow(QMainWindow):
         self.combo_site.addItems(["Default Headquarters (Main Site)", "Branch 1 (West Facility)", "Branch 2 (South Warehouse)"])
         self.combo_site.setStyleSheet("background-color: #21262d; border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px;")
         layout.addWidget(self.combo_site)
+
+        # Discovery Button
+        self.btn_discovery = QPushButton("  Discover Cameras")
+        self.btn_discovery.setStyleSheet("background-color: #21262d; border: 1px solid #30363d; border-radius: 4px; padding: 4px 10px; color: #58a6ff; font-weight: 600;")
+        self.btn_discovery.clicked.connect(self._open_discovery_dialog)
+        layout.addWidget(self.btn_discovery)
 
         layout.addStretch()
 
@@ -190,8 +203,6 @@ class MainWindow(QMainWindow):
             btn.clicked.connect(lambda checked, index=idx: self._switch_view(index))
             self._nav_buttons.append(btn)
             layout.addWidget(btn)
-
-        layout.addStretch()
 
         # System Version Indicator
         lbl_ver = QLabel(f"v0.1.0-alpha (Offline Local)")
@@ -241,10 +252,16 @@ class MainWindow(QMainWindow):
         hours, mins = divmod(mins, 60)
         self.lbl_uptime.setText(f"Uptime: {hours:02d}:{mins:02d}:{secs:02d}")
 
+    def _open_discovery_dialog(self) -> None:
+        """Opens camera discovery and manual addition dialog."""
+        dialog = DeviceDiscoveryDialog(self)
+        dialog.exec()
+
     def closeEvent(self, event) -> None:
         """Handles clean application shutdown on window close."""
         self.clock_timer.stop()
         self.telemetry_timer.stop()
+        stream_manager.stop_all()
         worker_manager.shutdown()
         db_manager.close()
         event.accept()

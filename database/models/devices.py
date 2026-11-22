@@ -1,9 +1,10 @@
 """
 Device, Camera, Site, and Stream Topology Models.
-Supports IP Cameras, NVRs, DVRs, ONVIF profiles, and RTSP stream metadata.
+Supports IP Cameras, NVRs, DVRs, ONVIF profiles, RTSP stream metadata,
+device discovery logs, encrypted credentials, and stream health history.
 """
 
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Float, Text
+from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Float, Text, DateTime
 from sqlalchemy.orm import relationship
 from database.models.base import Base
 
@@ -53,6 +54,20 @@ class Device(Base):
     channels = relationship("DeviceChannel", back_populates="device", cascade="all, delete-orphan")
     capabilities = relationship("DeviceCapability", uselist=False, back_populates="device", cascade="all, delete-orphan")
     status = relationship("DeviceStatus", uselist=False, back_populates="device", cascade="all, delete-orphan")
+    credentials = relationship("DeviceCredential", uselist=False, back_populates="device", cascade="all, delete-orphan")
+    nvr_mappings = relationship("NVRChannelMapping", back_populates="nvr_device", cascade="all, delete-orphan")
+
+
+class DeviceCredential(Base):
+    """Secure encrypted credential storage for cameras and NVRs."""
+    __tablename__ = "device_credentials"
+
+    device_id = Column(String(36), ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    username = Column(String(100), nullable=False)
+    encrypted_password = Column(Text, nullable=False)  # Encrypted with AES-256 via CredentialVault
+    auth_type = Column(String(20), default="DIGEST", nullable=False)  # DIGEST, BASIC
+
+    device = relationship("Device", back_populates="credentials")
 
 
 class DeviceChannel(Base):
@@ -67,6 +82,7 @@ class DeviceChannel(Base):
 
     device = relationship("Device", back_populates="channels")
     stream_profiles = relationship("StreamProfile", back_populates="channel", cascade="all, delete-orphan")
+    health_logs = relationship("StreamHealthLog", back_populates="channel", cascade="all, delete-orphan")
 
 
 class StreamProfile(Base):
@@ -111,3 +127,48 @@ class DeviceStatus(Base):
     last_error = Column(Text, nullable=True)
 
     device = relationship("Device", back_populates="status")
+
+
+class DeviceDiscoveryRecord(Base):
+    """Discovered network devices awaiting registration."""
+    __tablename__ = "device_discovery_records"
+
+    ip_address = Column(String(45), nullable=False, index=True)
+    mac_address = Column(String(17), nullable=True, index=True)
+    manufacturer = Column(String(100), default="Generic", nullable=False)
+    model = Column(String(100), default="Unknown", nullable=False)
+    firmware_version = Column(String(100), nullable=True)
+    onvif_port = Column(Integer, default=80, nullable=False)
+    rtsp_port = Column(Integer, default=554, nullable=False)
+    discovery_method = Column(String(30), default="WS_DISCOVERY", nullable=False)  # WS_DISCOVERY, SUBNET_SCAN, MANUAL
+    detected_capabilities = Column(Text, nullable=True)  # JSON summary
+    is_added = Column(Boolean, default=False, nullable=False, index=True)
+
+
+class StreamHealthLog(Base):
+    """Historical telemetry log for stream quality, reconnects, and FPS."""
+    __tablename__ = "stream_health_logs"
+
+    channel_id = Column(String(36), ForeignKey("device_channels.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(String(30), default="ONLINE", nullable=False)  # ONLINE, OFFLINE, RECONNECTING, ERROR
+    fps_measured = Column(Float, default=0.0, nullable=False)
+    bitrate_kbps = Column(Integer, default=0, nullable=False)
+    latency_ms = Column(Float, default=0.0, nullable=False)
+    dropped_frames = Column(Integer, default=0, nullable=False)
+    error_message = Column(Text, nullable=True)
+
+    channel = relationship("DeviceChannel", back_populates="health_logs")
+
+
+class NVRChannelMapping(Base):
+    """Maps recorder channels to camera inputs for NVR/DVR multi-channel units."""
+    __tablename__ = "nvr_channel_mappings"
+
+    nvr_device_id = Column(String(36), ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel_number = Column(Integer, nullable=False)
+    mapped_camera_name = Column(String(100), nullable=False)
+    main_stream_url = Column(String(500), nullable=False)
+    sub_stream_url = Column(String(500), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    nvr_device = relationship("Device", back_populates="nvr_mappings")

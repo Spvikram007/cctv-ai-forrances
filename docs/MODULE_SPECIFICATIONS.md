@@ -7,10 +7,10 @@
 - **Refresh Frequency**: 3000ms safe non-blocking Qt polling.
 
 ## Module 2: Live CCTV Monitoring (`modules/live_monitoring`)
-- **Status**: PLANNED (Phase 3)
-- **Role**: High-capacity multi-stream visual display.
-- **Layouts**: 1, 4, 9, 16, 25, 36, 64-channel adaptive grids.
-- **Features**: Substream/mainstream switching, PTZ controls, digital zoom, snapshot extraction, AI overlay rendering.
+- **Status**: COMPLETE (Phase 1 & 2 Baseline)
+- **Role**: High-capacity multi-stream visual display and monitoring grid.
+- **Layouts**: 1, 4, 9, 16 camera grids implemented (scalable to 25, 36, 64).
+- **Features**: Live QPainter rendering, aspect ratio preservation, camera title overlay, status dot indicator, FPS and resolution telemetry, full-screen tile double-click maximization, local snapshot capture.
 
 ## Module 3: Playback Engine (`modules/video_playback`)
 - **Status**: PLANNED (Phase 4)
@@ -52,9 +52,9 @@
 - **Checks**: SHA-256 chain of custody, frame discontinuity audit, duplicate frame detection, timestamp and compression anomaly inspection.
 
 ## Module 11: Camera Integration (`integrations`)
-- **Status**: PLANNED (Phase 2)
-- **Role**: Hardware communication layer.
-- **Adapters**: ONVIF (Profile S/G/T), RTSP, Hikvision ISAPI, Dahua CGI, CP PLUS, and generic IP cameras.
+- **Status**: COMPLETE (Phase 1 & 2 Baseline)
+- **Role**: Hardware communication and discovery layer.
+- **Adapters**: ONVIF WS-Discovery (multicast UDP), ONVIF Profile S/T client (WS-Security PasswordDigest, PTZ ContinuousMove/Stop), Hikvision ISAPI adapter, Dahua CGI adapter, CP PLUS adapter, and generic RTSP streamer with bounded queue frame dropping.
 
 ## Module 12: Network Intelligence (`modules/network_intelligence`)
 - **Status**: PLANNED (Phase 11)

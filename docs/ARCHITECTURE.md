@@ -69,3 +69,20 @@ The database architecture employs an abstract repository model via SQLAlchemy 2.
 - All network operations are strictly local. No outbound network requests are initiated.
 - Credential protection: Passwords, tokens, and RTSP authorization strings are scrubbed by a redacting logging formatter prior to output.
 - Role-Based Access Control (RBAC): Administrators, Supervisors, Operators, Investigators, and Viewers have granular permissions enforced at the controller and UI levels.
+
+### 3.4 Video Streaming Pipeline & Bounded Queues
+- **Decoupled Worker Architecture**: Each active camera channel runs an isolated `RTSPStreamWorker` thread. Decoding failures, network timeouts, or camera disconnects are handled through automated exponential backoff reconnection loops without impacting other streams or the Qt UI thread.
+- **Bounded Frame Buffer**: A thread-safe bounded double-ended queue (`deque(maxlen=30)`) is maintained per channel. Under network latency or processing lag, the queue automatically discards the oldest frame in $O(1)$ time, maintaining low latency and preventing memory bloat.
+- **In-Memory Frame Transport**: Video frames are transported as native numpy ndarrays within the process space directly to `VideoTileWidget` (via `QPainter.drawImage`) and AI inference queues, strictly avoiding raw video serialization through JSON or IPC bottlenecks.
+
+### 3.5 Camera Discovery Subsystem
+- **ONVIF WS-Discovery**: Sends standardized SOAP probe broadcasts to multicast group `239.255.255.250:3702` (Types: `dn:NetworkVideoTransmitter`). Responses are parsed to extract device service XAddrs, hardware models, and scopes.
+- **Subnet IP Scanner**: Concurrently probes common surveillance ports (80, 554, 8000, 8080, 8899, 37777) across user-configurable CIDR blocks.
+- **MAC Resolution & Brand Fingerprinting**: Local ARP tables map discovered IPs to MAC addresses. MAC OUI prefixes and scope strings automatically identify Hikvision, Dahua, CP PLUS, Uniview, and Axis devices.
+
+### 3.6 ONVIF & Manufacturer Adapters
+- **Pure-Python ONVIF Client**: Implements WS-Security UsernameToken authentication with SHA-1 `PasswordDigest`, Nonce, and Created timestamps. Exposes `GetDeviceInformation`, `GetCapabilities`, `GetProfiles`, `GetStreamUri`, and Profile S/T PTZ continuous move/stop.
+- **NVR/DVR Adapters**: Dedicated HTTP/REST adapters for Hikvision ISAPI (`/ISAPI/ContentMgmt/InputProxy/channels`), Dahua CGI (`/cgi-bin/configManager.cgi`), and CP PLUS map recorder channels to individual camera streams.
+
+### 3.7 Local Credential Vault
+- **AES-256-GCM Encryption**: Device passwords and authentication credentials are encrypted using `CredentialVault` before being written to the database. Master keys are derived using PBKDF2HMAC (100,000 iterations) salted and bound to local machine hardware identity. Passwords are never stored or logged in plaintext.

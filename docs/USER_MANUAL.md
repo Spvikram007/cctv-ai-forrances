@@ -49,3 +49,37 @@ Clicking any icon/button in the left sidebar instantly switches the active works
 
 ### 2.3 Status Bar
 Displays active database backend (`SQLite WAL` or `PostgreSQL`), active worker thread count, storage I/O state, and cumulative application uptime.
+
+---
+
+## 3. Live Surveillance View Operation
+
+### 3.1 Layout Switching
+In the **Live View** workspace, use the layout toolbar buttons to dynamically switch display grids:
+- `[1x1 (Single)]`: Displays 1 camera full size.
+- `[2x2 (4-Cam)]`: 4-camera split screen (default).
+- `[3x3 (9-Cam)]`: 9-camera perimeter overview.
+- `[4x4 (16-Cam)]`: 16-camera command matrix.
+
+### 3.2 Maximizing a Camera Tile
+- **Double-click** on any camera tile to immediately maximize it to full screen (1-up).
+- Double-clicking the tile again instantly restores your previous multi-camera grid layout.
+
+### 3.3 Snapshot Extraction
+- Click the **SNAP** button located at the bottom-right of any camera tile to extract the current full-resolution frame.
+- Snapshots are saved automatically to `storage/snapshots/` with exact UTC microsecond timestamps and indexed in the metadata database.
+
+### 3.4 Starting Simulated Test Streams
+- Click the **Start Simulated Test Streams (1-4)** button in the Live View toolbar to immediately launch 4 realistic synthetic surveillance video feeds. Useful for system verification and training when offline or when physical cameras are not connected.
+
+---
+
+## 4. Camera Discovery & Device Registration
+
+1. Click **Discover Cameras** in the top header bar to open the discovery dialog.
+2. **ONVIF WS-Discovery**: Click `ONVIF WS-Discovery (Multicast)` to broadcast a network probe across the local LAN. Compliant ONVIF Profile S/T/G cameras respond within seconds with their IP, ONVIF port, hardware model, and manufacturer.
+3. **Subnet Scan**: Enter your local IP range (e.g. `192.168.1.0/24`) and click `Scan IP Range` to concurrently probe surveillance ports (80, 554, 8000, 8080, 37777).
+4. **Registration**:
+   - Highlight any discovered camera in the table and click **Add Selected Camera to System**.
+   - Alternatively, use the **Manual Camera Addition** tab to register any custom camera, NVR, or RTSP stream by specifying the manufacturer (Hikvision, Dahua, CP PLUS, Generic), IP address, and credentials.
+   - All passwords are encrypted locally using AES-256 before being committed to the database. Passwords are never stored in plaintext.

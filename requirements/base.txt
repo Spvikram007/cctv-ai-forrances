@@ -15,10 +15,11 @@ onnxruntime>=1.32.0
 SQLAlchemy>=2.0.0
 alembic>=1.15.0
 
-# Configuration & Validation
+# Configuration, Validation & Security
 pydantic>=2.10.0
 pydantic-settings>=2.10.0
 python-dotenv>=1.2.0
+cryptography>=50.0.0
 
 # System, Hardware & Async Process Utilities
 psutil>=7.0.0
