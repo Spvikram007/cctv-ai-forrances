@@ -1,0 +1,5 @@
+-r base.txt
+
+# Windows Packaging & Production
+pyinstaller>=6.10.0
+psycopg2-binary>=2.9.10; platform_system=="Windows"

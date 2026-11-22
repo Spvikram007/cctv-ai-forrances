@@ -1,0 +1,140 @@
+"""
+Database Management Engine for CCTV AI Intelligence Platform.
+Supports PostgreSQL for high-scale enterprise deployments and resilient
+automatic SQLite WAL mode fallback for robust offline local operations.
+"""
+
+import time
+from pathlib import Path
+from typing import Generator, Dict, Any, Optional
+from contextlib import contextmanager
+from sqlalchemy import create_engine, event, text, Engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import StaticPool, QueuePool
+
+from core.logging.logger import get_logger
+from core.config.settings import PlatformSettings, settings
+from database.models.base import Base
+# Ensure all models are imported so Base.metadata knows all tables
+import database.models  # noqa: F401
+
+logger = get_logger("database_manager")
+
+
+class DatabaseManager:
+    """Manages database connection lifecycle, sessions, and schema migrations."""
+
+    def __init__(self, config: Optional[PlatformSettings] = None) -> None:
+        self.config = config or settings
+        self.engine: Optional[Engine] = None
+        self.SessionLocal: Optional[sessionmaker] = None
+        self.active_backend: str = "uninitialized"
+        self._initialize_engine()
+
+    def _initialize_engine(self) -> None:
+        db_conf = self.config.database
+        
+        # 1. Try PostgreSQL if configured
+        if db_conf.engine_type == "postgresql" and db_conf.postgresql_url:
+            try:
+                logger.info("Attempting connection to PostgreSQL: %s", db_conf.postgresql_url.split("@")[-1])
+                pg_engine = create_engine(
+                    db_conf.postgresql_url,
+                    pool_size=db_conf.pool_size,
+                    max_overflow=db_conf.max_overflow,
+                    pool_timeout=db_conf.pool_timeout,
+                    echo=db_conf.echo_sql,
+                )
+                with pg_engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                self.engine = pg_engine
+                self.active_backend = "postgresql"
+                logger.info("PostgreSQL database connection verified and active.")
+            except Exception as e:
+                logger.warning("PostgreSQL connection failed: %s. Falling back to SQLite WAL mode.", e)
+                self.engine = None
+
+        # 2. Resilient Fallback to SQLite WAL mode
+        if self.engine is None:
+            sqlite_path = Path(db_conf.sqlite_path)
+            sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+            db_url = f"sqlite:///{sqlite_path.as_posix()}"
+            
+            logger.info("Initializing local SQLite database with WAL mode: %s", db_url)
+            self.engine = create_engine(
+                db_url,
+                connect_args={"check_same_thread": False, "timeout": 30},
+                poolclass=QueuePool,
+                echo=db_conf.echo_sql,
+            )
+
+            # SQLite performance & integrity optimizations
+            @event.listens_for(self.engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.execute("PRAGMA busy_timeout=5000")
+                cursor.close()
+
+            self.active_backend = "sqlite"
+
+        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+
+    def init_schema(self) -> None:
+        """Initializes all registered metadata tables if they do not exist."""
+        if self.engine is None:
+            raise RuntimeError("Database engine is not initialized.")
+        logger.info("Verifying and creating database schema for backend [%s]...", self.active_backend)
+        Base.metadata.create_all(bind=self.engine)
+        logger.info("Database schema verification completed successfully.")
+
+    @contextmanager
+    def get_session(self) -> Generator[Session, None, None]:
+        """Context manager for safe transactional database sessions."""
+        if self.SessionLocal is None:
+            raise RuntimeError("Database session maker is not initialized.")
+        session: Session = self.SessionLocal()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    def health_check(self) -> Dict[str, Any]:
+        """Performs a live query and measures latency."""
+        if self.engine is None:
+            return {"status": "UNHEALTHY", "error": "No engine"}
+        
+        start_time = time.perf_counter()
+        try:
+            with self.engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            table_count = len(Base.metadata.tables)
+            return {
+                "status": "HEALTHY",
+                "backend": self.active_backend,
+                "latency_ms": latency_ms,
+                "table_count": table_count,
+            }
+        except Exception as e:
+            return {
+                "status": "UNHEALTHY",
+                "backend": self.active_backend,
+                "error": str(e),
+            }
+
+    def close(self) -> None:
+        """Disposes connection pool on application shutdown."""
+        if self.engine:
+            self.engine.dispose()
+            logger.info("Database connection pool disposed.")
+
+
+# Global database manager singleton
+db_manager = DatabaseManager()

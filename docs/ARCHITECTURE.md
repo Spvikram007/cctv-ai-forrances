@@ -1,0 +1,71 @@
+# System Architecture Blueprint
+
+## 1. High-Level Architecture Overview
+
+The **CCTV AI Intelligence Platform** is built as a high-performance, modular monolith desktop application engineered specifically for Windows 11. It is designed to handle up to **64 concurrent camera channels** with real-time video decoding, offline deep learning AI inference, multi-channel synchronized playback, cryptographic forensic analysis, and comprehensive alarm routing without relying on external cloud APIs or internet connectivity.
+
+```
++---------------------------------------------------------------------------------------+
+|                                PySide6 Desktop UI Layer                               |
+|  [Header & Telemetry]  [15-View Sidebar Navigation]  [Stacked Dynamic Workspaces]     |
+|  - 64-Channel Grid      - Multi-Timeline Playback    - Live AI Overlay Engine         |
++---------------------------------------------------------------------------------------+
+                                           |
+                                           v
++---------------------------------------------------------------------------------------+
+|                               Core Application Layer                                  |
+|  [ApplicationState]  [EventBus Pub/Sub]  [WorkerManager Thread/Process Pool]          |
+|  [Pydantic Settings] [Structured Redacting Logger] [Hardware Probing Engine]          |
++---------------------------------------------------------------------------------------+
+         |                                |                               |
+         v                                v                               v
++------------------+           +----------------------+          +----------------------+
+|   Video Engine   |           |      AI Engine       |          |   Storage & Forensics|
+| - FFmpeg D3D11VA |           | - Intel OpenVINO™    |          | - Segment Writer     |
+| - RTSP Streamers | <-------> | - ONNX Runtime       | <------> | - Keyframe Indexer   |
+| - Substream Dist |           | - Intel UHD 730 GPU  |          | - SHA-256 Hasher     |
+| - OpenCV Decoders|           | - CPU AVX2 Fallback  |          | - Evidence Locker    |
++------------------+           +----------------------+          +----------------------+
+         |                                |                               |
+         +--------------------------------+-------------------------------+
+                                          |
+                                          v
++---------------------------------------------------------------------------------------+
+|                             Database & Persistence Layer                              |
+|  [SQLAlchemy 2.0 ORM] - Universal Relational Abstraction                              |
+|  - Enterprise Target: PostgreSQL (High-capacity metadata, multi-site deployments)     |
+|  - Local Offline Target: SQLite with WAL Mode, Foreign Keys & 5000ms Busy Timeout    |
+|  - File System: Local Non-Relational Bounded Video & Evidence Chunk Stores            |
++---------------------------------------------------------------------------------------+
+```
+
+## 2. Hardware Acceleration Pipeline
+
+Surveillance systems processing 64 channels cannot execute deep learning inference on uncompressed 4K or 1080p main streams without saturating host compute and memory bus. The platform implements a **dual-resolution distribution architecture**:
+
+1. **Main Stream (High Resolution - 1080p to 4K)**:
+   - Dedicated to primary display views (1-up, 4-up) and direct-to-disk recording.
+   - Hardware accelerated decode using Windows DirectX 11 Video Acceleration (`d3d11va`) or `dxva2`.
+2. **Substream (Low Resolution - 640x360 / 640x480)**:
+   - Fed into the shared AI Inference Engine.
+   - Ingested directly into Intel OpenVINO™ optimized model topologies.
+3. **Execution Devices**:
+   - Primary: `Intel(R) UHD Graphics 730` (`GPU` OpenVINO plugin) with FP16 precision.
+   - Automatic Fallback: `12th Gen Intel(R) Core(TM) i5-12400` (`CPU` OpenVINO plugin) utilizing AVX2 vectorized execution.
+   - Inference Scheduler: Adaptive frame sampling (e.g. 5-10 FPS sampling for detection with byte-tracking across skipped frames).
+
+## 3. Core Subsystems
+
+### 3.1 Worker Process & Thread Management
+Long-running camera network streams, FFmpeg decoders, and AI inference runners are completely decoupled from the PySide6 UI event loop. Worker pools with thread isolation, health monitoring heartbeats, error boundaries, and auto-restart policies prevent a broken camera RTSP stream from freezing the desktop interface.
+
+### 3.2 Database Strategy
+The database architecture employs an abstract repository model via SQLAlchemy 2.0:
+- **PostgreSQL**: Used for enterprise networked environments, external reporting servers, and multi-NVR sync.
+- **SQLite with WAL Mode**: Used as an instant, zero-configuration local fallback for standalone Windows workstations. Write-Ahead Logging (WAL) ensures non-blocking concurrent readers while background threads log detection events.
+- **No Blob Storage in Relational DB**: Video chunks, snapshots, and raw keyframes are strictly stored on the file system with path indexing and SHA-256 hashes recorded in the database.
+
+### 3.3 Security & Zero-Cloud Guarantee
+- All network operations are strictly local. No outbound network requests are initiated.
+- Credential protection: Passwords, tokens, and RTSP authorization strings are scrubbed by a redacting logging formatter prior to output.
+- Role-Based Access Control (RBAC): Administrators, Supervisors, Operators, Investigators, and Viewers have granular permissions enforced at the controller and UI levels.
