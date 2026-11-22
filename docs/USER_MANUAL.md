@@ -118,3 +118,40 @@ In the **Live View** workspace, use the layout toolbar buttons to dynamically sw
 4. Check **Flag as Protected Evidence**: This guarantees that the original source footage in the storage vault is locked and will **never be deleted by automatic retention routines**.
 5. Enter case notes or investigation justification.
 6. Click **Start Export**: The exporter generates a standard MP4 file, computes its cryptographic SHA-256 checksum, and writes an adjacent forensic `{filename}_manifest.json` file for legal chain-of-custody.
+
+---
+
+## 6. AI Intelligence & Analytics Workspace
+
+### 6.1 Accessing the AI Workspace
+1. Click **AI Intelligence** in the left navigation sidebar (item 4).
+2. The AI Intelligence Command Dashboard displays real-time telemetry across all active inference pipelines.
+
+### 6.2 Telemetry Gauges & Hardware Status
+- **Inference Device**: Displays active compute backend (`Intel UHD 730 (GPU)` or `CPU (AVX2)`).
+- **Active AI Channels**: Count of camera streams currently being processed by AI workers.
+- **Total Detections**: Aggregate counter of detected objects across all cameras.
+- **Average Latency**: Average inference duration in milliseconds. Color-coded: Green ($< 50\text{ms}$), Amber ($50\text{--}100\text{ms}$), Red ($> 100\text{ms}$).
+- **Aggregate FPS**: Real-time processed frames per second across all camera streams.
+- **AI Events Generated**: Total count of security triggers emitted to the event bus.
+
+### 6.3 Per-Channel Inference Status Table
+- Lists each monitored channel with:
+  - **Channel**: Camera identifier.
+  - **Device**: Active inference execution device (`GPU` or `CPU`).
+  - **FPS**: Per-channel inference frame rate (target: 5.0 FPS).
+  - **Latency**: Per-frame processing time.
+  - **Detections**: Total objects identified on this channel.
+
+### 6.4 Detection Classes & Severity
+- **Person**: Classified as `WARNING` severity; triggers automatic event recording and snapshot capture.
+- **Vehicles (Car, Bus, Truck, Motorcycle, Bicycle)**: Classified as `INFO` severity; tracked with persistent ByteTrack IDs.
+
+### 6.5 Multi-Object Tracking & Camera Isolation
+- Each camera channel runs an independent ByteTrack tracker with Kalman filter prediction.
+- Tracking IDs are strictly isolated per camera to prevent cross-camera ID pollution.
+- Lost tracks are maintained through brief occlusions (up to 30 frames) and automatically reacquired.
+
+### 6.6 Snapshot Storage & Event Deduplication
+- High-severity detection snapshots are automatically stored under `storage/snapshots/{channel_id}/{YYYYMMDD}/`.
+- Event deduplication prevents repetitive alarm flooding by suppressing duplicate triggers for the same object within 5 seconds.

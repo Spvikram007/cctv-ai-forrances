@@ -18,11 +18,13 @@
 - **Components**: `SingleCameraPlayer`, `SynchronizedPlaybackController`, `TimelineWidget` (QPainter), `PlaybackWidget`, `ClipExportDialog`, `VideoExporter`.
 - **Features**: Synchronized master clock playback across 1, 4, 9, 16 camera layouts, frame-by-frame stepping (+/-1 frame @ 25 FPS), variable speeds (0.25x, 0.5x, 1x, 2x, 4x, 8x, 16x), recording gap detection with standby graphic, interactive color-coded timeline with mouse scrub seeking and wheel zoom (24h to 5m), time-bounded MP4 video clip export with SHA-256 integrity hash, sidecar audit JSON manifest, and legal evidence lock.
 
-## Module 4: AI Object Detection (`engines/detection_engine`)
-- **Status**: PLANNED (Phase 5)
-- **Role**: Real-time object classification and bounding box generation.
-- **Classes**: Person, car, motorcycle, bus, truck, bicycle, bag, animal, fire, smoke.
-- **Acceleration**: Intel OpenVINO™ GPU/CPU execution.
+## Module 4: AI Object Detection & Tracking (`engines/detection_engine`, `engines/tracking_engine`, `engines/ai_engine`)
+- **Status**: COMPLETE (Phase 5)
+- **Role**: Real-time multi-channel object detection, classification, bounding box regression, ByteTrack persistent multi-object tracking, and security event triggers.
+- **Classes**: Person, car, motorcycle, bus, truck, bicycle (surveillance-filtered from 80-class COCO topology).
+- **Acceleration**: Intel OpenVINO™ GPU offload (`Intel UHD 730`), CPU AVX2 fallback, and secondary ONNX Runtime engine.
+- **Components**: `OpenVINOInferenceEngine`, `ONNXInferenceEngine`, `AIInferenceWorker`, `InferenceWorkerManager`, `YOLODetector`, `ByteTracker`, `MultiCameraTrackManager`, `AIEventProcessor`, `AIDashboardWidget`.
+- **Features**: Substream 640x360 inference ingest, aspect-ratio letterboxing, OpenCV Non-Maximum Suppression, Kalman filter trajectory tracking, strict per-camera tracking isolation, deduplicated event publishing, JPEG detection snapshots, and automatic AI event-triggered video recording.
 
 ## Module 5: Human Intelligence (`engines/face_engine`, `engines/detection_engine`)
 - **Status**: PLANNED (Phase 7)
@@ -82,6 +84,8 @@
 - **Role**: Security and operations reporting.
 - **Formats**: PDF and Excel exports.
 
-## Module 17: AI Model Management (`modules/model_management`)
-- **Status**: PLANNED (Phase 5)
+## Module 17: AI Model Management (`engines/ai_engine`, `modules/ai_intelligence`)
+- **Status**: COMPLETE (Phase 5)
 - **Role**: Neural network model registry, verification, confidence tuning, and device scheduling.
+- **Components**: `ModelManager`, `ModelSpec`, `AIModel`, `AIModelVersion`, `AIJob`.
+- **Capabilities**: Local filesystem model cataloging, SHA-256 cryptographic weight verification, target device binding (AUTO, GPU, CPU), input tensor shape verification, and offline model execution without external cloud connectivity.

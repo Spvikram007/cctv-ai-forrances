@@ -92,6 +92,20 @@ class StreamManager:
         with self._lock:
             return sum(1 for w in self._workers.values() if w.telemetry.state == StreamState.ONLINE)
 
+    def register_frame_callback(self, channel_id: str, callback: Callable[[str, np.ndarray, float], None]) -> None:
+        """Registers a frame consumer callback on a channel's stream worker."""
+        with self._lock:
+            worker = self._workers.get(channel_id)
+            if worker:
+                worker.add_frame_callback(callback)
+
+    def unregister_frame_callback(self, channel_id: str, callback: Callable[[str, np.ndarray, float], None]) -> None:
+        """Removes a frame consumer callback from a channel's stream worker."""
+        with self._lock:
+            worker = self._workers.get(channel_id)
+            if worker:
+                worker.remove_frame_callback(callback)
+
     def stop_all(self) -> None:
         """Halts all active stream workers during application shutdown."""
         logger.info("Halting all active RTSP stream workers...")

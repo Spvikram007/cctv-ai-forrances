@@ -97,12 +97,21 @@ def bootstrap_application() -> Dict[str, Any]:
     else:
         logger.info("No unclosed recording segments found; storage integrity verified.")
 
+    # 6. AI Inference Engine Initialization
+    from engines.ai_engine.inference_engine import openvino_engine, onnx_engine
+    openvino_ready = openvino_engine.initialize()
+    onnx_ready = onnx_engine.initialize()
+    logger.info("AI Engines: OpenVINO=%s (Active: %s), ONNX=%s",
+                openvino_ready, openvino_engine.active_device, onnx_ready)
+
     return {
         "status": "READY",
         "app_name": settings.app_name,
         "version": settings.app_version,
         "hardware_tier": report.hardware_acceleration_tier,
         "openvino_devices": report.openvino.available_devices,
+        "openvino_ready": openvino_ready,
+        "active_ai_device": openvino_engine.active_device,
         "db_health": db_health,
         "recovered_recordings": recovered_count,
     }

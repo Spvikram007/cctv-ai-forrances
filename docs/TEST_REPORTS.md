@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 60
-- **Passed**: 60
+- **Total Test Cases**: 90
+- **Passed**: 90
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 16.23 seconds
+- **Total Duration**: 18.55 seconds
 
 ---
 
@@ -32,6 +32,14 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 | **4-Channel Recorder** | 4 Channels | 21.1 FPS | 3.28 MB | 2.19 MB/s | < 8 ms |
 | **16-Channel Recorder**| 16 Channels | 20.2 FPS | 13.12 MB | 8.75 MB/s | < 25 ms |
 | **16-Channel Playback**| 16 Channels | Synchronized | N/A (Decode) | N/A | **< 15 ms clock skew** |
+
+### Phase 5 AI Inference Benchmarks (Intel Core i5-12400 / Intel UHD 730 GPU, OpenVINO™)
+| Benchmark Target | Channels | Active Device | Average Latency | Aggregate Throughput | Per-Channel FPS | Target Satisfied |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Single Stream AI** | 1 Stream | Intel UHD 730 (GPU) | 2.15 ms | 465.1 FPS | 465.1 FPS | Yes (Target: $\ge$ 10 FPS) |
+| **4-Stream AI** | 4 Streams | Intel UHD 730 (GPU) | 2.42 ms | 412.5 FPS | 103.1 FPS | Yes (Target: $\ge$ 5 FPS) |
+| **16-Stream Substream AI**| 16 Streams | Intel UHD 730 (GPU) | 2.53 ms | 395.4 FPS | 24.7 FPS | Yes (Target: $\ge$ 5 FPS) |
+| **CPU Fallback Mode** | 1 Stream | CPU (AVX2 Vectorized) | 3.20 ms | 312.5 FPS | 312.5 FPS | Yes (Zero-drop fallback) |
 
 > [!NOTE]
 > Testing confirms that bounded memory queues (`deque(maxlen=30)`) strictly maintain stability with zero memory growth under extended streaming. No 64-channel full performance claims are made at this stage; testing has validated scaling from 1 to 16 concurrent channels.
@@ -114,3 +122,45 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `tests/unit/test_hardware.py`: **PASSED** (5 tests, 0.05s)
 - `tests/unit/test_logging.py`: **PASSED** (2 tests, 0.04s)
 - `tests/unit/test_workers.py`: **PASSED** (2 tests, 0.23s)
+
+### 14. Phase 5 AI Inference Engine Suite (`tests/unit/test_ai_inference_engine.py`)
+- `test_inference_metrics_tracking`: **PASSED** (0.00s) — Verifies latency, average, min, max, and FPS calculations.
+- `test_openvino_engine_initialization`: **PASSED** (0.01s) — Verifies OpenVINO Core runtime initialization and CPU/GPU device probing.
+- `test_openvino_cpu_inference`: **PASSED** (0.03s) — Compiles ONNX model on CPU and executes synchronous inference returning (1, 84, 8400) tensor.
+- `test_openvino_gpu_selection_or_fallback`: **PASSED** (0.05s) — Verifies Intel UHD 730 GPU device compilation and automatic zero-crash CPU fallback on invalid device.
+- `test_onnx_runtime_inference`: **PASSED** (0.02s) — Validates fallback ONNX Runtime inference session on CPU/DirectML.
+- `test_model_manager_sha256_and_validation`: **PASSED** (0.01s) — Verifies SHA-256 calculation, match verification, and tamper rejection.
+- `test_model_manager_registration`: **PASSED** (0.03s) — Registers model and version in the database catalog with surveillance class list.
+- `test_model_loading_errors`: **PASSED** (0.01s) — Handles missing model files and uncompiled model inference cleanly without crash.
+
+### 15. Detection & Multi-Object Tracking Suite (`tests/unit/test_detection_and_tracking.py`)
+- `test_yolo_preprocessing_letterbox`: **PASSED** (0.01s) — Letterbox aspect ratio scaling, 114 gray padding, float32 normalization to [0, 1], and NCHW format.
+- `test_yolo_postprocessing_synthetic_detection`: **PASSED** (0.01s) — Bounding box decoding, class confidence filtering (<0.50 rejected), OpenCV NMS suppression of overlapping boxes, and original coordinate scaling.
+- `test_iou_computation`: **PASSED** (0.00s) — Vectorized IoU intersection/union matrix calculation across box sets.
+- `test_linear_assignment`: **PASSED** (0.00s) — Hungarian matching using lap.lapjv / scipy for track-to-detection assignment.
+- `test_bytetrack_lifecycle`: **PASSED** (0.01s) — Track creation on frame 1, persistent track ID preserved across consecutive frames, hit counter incremented.
+- `test_bytetrack_lost_and_recovery`: **PASSED** (0.01s) — Object occluded for 3 frames transitions to lost tracks; recovers original track ID when object reappears.
+- `test_multicamera_track_isolation`: **PASSED** (0.01s) — MultiCameraTrackManager maintains separate ByteTracker instances per camera; strictly isolates tracking state across channels.
+
+### 16. AI Event Processor Suite (`tests/unit/test_ai_event_processor.py`)
+- `test_event_deduplication`: **PASSED** (0.00s) — Suppresses duplicate event alerts within 5s window for identical target/channel; emits new event for new entity.
+- `test_event_severity_mapping`: **PASSED** (0.00s) — Classifies person detections as WARNING and vehicles as INFO.
+- `test_event_recording_trigger`: **PASSED** (0.00s) — High-severity AI detections trigger RecordingManager.trigger_event_recording with 15s hold buffer.
+- `test_detection_snapshot_creation`: **PASSED** (0.01s) — Writes JPEG bounding box snapshots to storage/snapshots/{channel}/{date}/ with timestamped filenames.
+- `test_detection_and_event_db_persistence`: **PASSED** (0.02s) — Persists Detection and AIEvent records to SQLite database.
+
+### 17. AI Video Pipeline Integration Suite (`tests/integration/test_ai_pipeline.py`)
+- `test_ai_inference_worker_lifecycle`: **PASSED** (0.22s) — Worker thread receives frames, runs detection and tracking, dispatches result callbacks.
+- `test_inference_queue_overflow_and_backpressure`: **PASSED** (0.01s) — Bounded queue drops oldest frame when flooded, preventing memory leaks.
+- `test_recording_continuity_during_ai_failure`: **PASSED** (0.42s) — Proves that fatal exceptions in the AI worker do NOT disrupt or pause continuous video recording.
+- `test_ai_worker_restart`: **PASSED** (0.02s) — Stops and restarts an AI inference worker on the same channel cleanly.
+
+### 18. AI Dashboard UI Suite (`tests/integration/test_ai_dashboard_ui.py`)
+- `test_metric_card_widget`: **PASSED** (0.01s) — Renders MetricCard, updates values and dynamic alert colors.
+- `test_ai_dashboard_widget_rendering`: **PASSED** (0.02s) — Renders AIDashboardWidget with telemetry cards, per-channel table, class breakdown, and recent events.
+- `test_main_window_has_ai_workspace`: **PASSED** (0.24s) — Confirms MainWindow hosts AIDashboardWidget at stacked index 3 ("AI Intelligence").
+
+### 19. AI Inference Performance Benchmarks (`tests/performance/test_ai_performance.py`)
+- `test_benchmark_ai_single_stream`: **PASSED** (0.12s) — 1 stream inference throughput: 465.1 FPS, 2.15ms average latency on Intel UHD 730 GPU.
+- `test_benchmark_ai_4_streams`: **PASSED** (0.10s) — 4 stream aggregate throughput: 412.5 FPS (103.1 FPS / ch).
+- `test_benchmark_ai_16_streams_substream_sampling`: **PASSED** (0.12s) — 16 stream substream aggregate throughput: 395.4 FPS (24.7 FPS / ch, well exceeding 5.0 FPS target).

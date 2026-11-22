@@ -59,7 +59,7 @@ class RecordingManager:
             with stream_manager._lock:
                 stream_worker = stream_manager._workers.get(channel_id)
                 if stream_worker:
-                    stream_worker.frame_callback = frame_hook
+                    stream_worker.add_frame_callback(frame_hook)
 
             bus.publish("recording.started", {"channel_id": channel_id, "mode": recording_type})
             return worker

@@ -51,7 +51,10 @@ class RTSPStreamWorker(threading.Thread):
         self.masked_url = mask_rtsp_url(rtsp_url)
         self.max_buffer_size = max_buffer_size
         self.reconnect_interval_sec = reconnect_interval_sec
-        self.frame_callback = frame_callback
+        self._callbacks: List[Callable[[str, np.ndarray, float], None]] = []
+        if frame_callback:
+            self._callbacks.append(frame_callback)
+        self._callbacks_lock = threading.Lock()
         self.is_test_stream = is_test_stream or rtsp_url.startswith("test://")
 
         # Bounded frame buffer: automatically drops oldest frame when full
@@ -71,6 +74,30 @@ class RTSPStreamWorker(threading.Thread):
         # FPS calculation state
         self._fps_timestamps: deque = deque(maxlen=30)
         self._test_frame_counter = 0
+
+    @property
+    def frame_callback(self):
+        with self._callbacks_lock:
+            return self._callbacks[0] if self._callbacks else None
+
+    @frame_callback.setter
+    def frame_callback(self, cb):
+        with self._callbacks_lock:
+            self._callbacks.clear()
+            if cb:
+                self._callbacks.append(cb)
+
+    def add_frame_callback(self, callback: Callable[[str, np.ndarray, float], None]) -> None:
+        """Registers an additional consumer callback for incoming decoded frames."""
+        with self._callbacks_lock:
+            if callback not in self._callbacks:
+                self._callbacks.append(callback)
+
+    def remove_frame_callback(self, callback: Callable[[str, np.ndarray, float], None]) -> None:
+        """Removes a registered frame consumer callback."""
+        with self._callbacks_lock:
+            if callback in self._callbacks:
+                self._callbacks.remove(callback)
 
     def stop(self) -> None:
         """Signals worker to stop and releases hardware resources."""
@@ -207,10 +234,12 @@ class RTSPStreamWorker(threading.Thread):
                     self._frame_buffer.append((frame, timestamp))
                     self.telemetry.queue_occupancy = len(self._frame_buffer)
 
-                # Frame callback dispatch
-                if self.frame_callback:
+                # Frame callback dispatch to all registered consumers
+                with self._callbacks_lock:
+                    callbacks_to_call = list(self._callbacks)
+                for cb in callbacks_to_call:
                     try:
-                        self.frame_callback(self.channel_id, frame, timestamp)
+                        cb(self.channel_id, frame, timestamp)
                     except Exception as e:
                         logger.debug("Error in frame callback for [%s]: %s", self.channel_id, e)
 

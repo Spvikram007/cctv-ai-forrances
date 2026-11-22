@@ -40,11 +40,13 @@ class AIModelVersion(Base):
 class AIJob(Base):
     __tablename__ = "ai_jobs"
 
-    channel_id = Column(String(36), ForeignKey("device_channels.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel_id = Column(String(64), nullable=False, index=True)
     model_version_id = Column(String(36), ForeignKey("ai_model_versions.id"), nullable=False, index=True)
     status = Column(String(20), default="STOPPED", nullable=False)  # RUNNING, STOPPED, ERROR
     target_device = Column(String(20), default="AUTO", nullable=False)
+    execution_device = Column(String(20), default="CPU", nullable=False)
     inference_fps = Column(Float, default=0.0, nullable=False)
+    actual_fps = Column(Float, default=0.0, nullable=False)
     total_inferences = Column(Integer, default=0, nullable=False)
 
     model_version = relationship("AIModelVersion", back_populates="jobs")
@@ -53,7 +55,7 @@ class AIJob(Base):
 class Detection(Base):
     __tablename__ = "detections"
 
-    channel_id = Column(String(36), ForeignKey("device_channels.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel_id = Column(String(64), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
     class_name = Column(String(50), nullable=False, index=True)  # person, car, truck, etc.
     confidence = Column(Float, nullable=False)
@@ -68,7 +70,7 @@ class Detection(Base):
 class ObjectTrack(Base):
     __tablename__ = "object_tracks"
 
-    channel_id = Column(String(36), ForeignKey("device_channels.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel_id = Column(String(64), nullable=False, index=True)
     track_id = Column(Integer, nullable=False, index=True)
     class_name = Column(String(50), nullable=False)
     start_time = Column(DateTime(timezone=True), nullable=False, index=True)
@@ -79,7 +81,7 @@ class ObjectTrack(Base):
 class AIEvent(Base):
     __tablename__ = "ai_events"
 
-    channel_id = Column(String(36), ForeignKey("device_channels.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel_id = Column(String(64), nullable=False, index=True)
     event_type = Column(String(50), nullable=False, index=True)  # INTRUSION, LINE_CROSS, LOITER, FACE_MATCH
     severity = Column(String(20), default="WARNING", nullable=False)  # INFO, WARNING, CRITICAL
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)

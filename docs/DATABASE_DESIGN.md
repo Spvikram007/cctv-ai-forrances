@@ -59,6 +59,12 @@ Ensures maximum read throughput and ACID transactional integrity during continuo
 - **`export_jobs`**: Video clip extraction tasks (`channel_id`, `start_time`, `end_time`, `destination_path`, `file_size_bytes`, `sha256_hash`, `status`, `progress_pct`, `is_evidence`, `created_by`, `error_message`).
 - **`recordings` Table Extended**: Added `codec`, `resolution_width`, `resolution_height`, `fps`, `bitrate_kbps`, `status` (`ACTIVE`, `COMPLETED`, `CORRUPTED`, `RECOVERED`), `is_locked` (forensic evidence lock preventing automated retention deletion). Decoupled `channel_id` to `String(64)` for logical channel independence.
 
+### 2.7 Phase 5 AI Inference & Tracking Extensions
+- **`ai_jobs` Table Extended**: Added `execution_device` (VARCHAR(20), default 'CPU') and `actual_fps` (FLOAT, default 0.0). Decoupled `channel_id` to `VARCHAR(64)` without device FK constraint to enable logical channel bindings.
+- **`detections` Table Updated**: Decoupled `channel_id` to `VARCHAR(64)` without device FK constraint for logical channel persistence. Indexed on `channel_id`, `timestamp`, `class_name`, `track_id`.
+- **`object_tracks` Table Updated**: Decoupled `channel_id` to `VARCHAR(64)` without device FK constraint. Indexed on `channel_id`, `track_id`, `start_time`.
+- **`ai_events` Table Updated**: Decoupled `channel_id` to `VARCHAR(64)` without device FK constraint. Indexed on `channel_id`, `event_type`, `severity`, `timestamp`.
+
 ## 4. Migration History (Alembic)
 - **`26108d74df4c`** (2026-11-22): `phase1_phase2_devices_and_streams`
   - Created tables: `device_credentials`, `device_discovery_records`, `nvr_channel_mappings`, `stream_health_logs`.
@@ -67,3 +73,7 @@ Ensures maximum read throughput and ACID transactional integrity during continuo
   - Created tables: `storage_events`, `playback_sessions`, `export_jobs`.
   - Added columns to `recordings`: `codec`, `resolution_width`, `resolution_height`, `fps`, `bitrate_kbps`, `status`, `is_locked`.
   - Added indexes on `is_locked`, `status`, `export_jobs.start_time`, `export_jobs.end_time`.
+- **`49b81e4a112f`** (2026-11-22): `phase5_ai_inference_and_tracking`
+  - Added columns to `ai_jobs`: `execution_device`, `actual_fps`.
+  - Decoupled `channel_id` from strict `device_channels.id` foreign key on `ai_jobs`, `detections`, `object_tracks`, `ai_events` to support logical channel tracking.
+  - Added indexes on `channel_id`, `timestamp`, `class_name`, `track_id`, `event_type`, `severity`.

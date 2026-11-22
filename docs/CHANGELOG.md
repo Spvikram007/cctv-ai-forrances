@@ -91,6 +91,7 @@ FILES MODIFIED:
 - `database/models/devices.py`
 - `database/models/__init__.py`
 - `app/main.py`
+- `tests/conftest.py`
 - `docs/FEATURE_REGISTER.md`
 - `docs/ARCHITECTURE.md`
 - `docs/DATABASE_DESIGN.md`
@@ -132,6 +133,7 @@ FILES MODIFIED:
 - `database/models/__init__.py`
 - `app/bootstrap.py`
 - `app/main.py`
+- `tests/conftest.py`
 - `docs/FEATURE_REGISTER.md`
 - `docs/ARCHITECTURE.md`
 - `docs/DATABASE_DESIGN.md`
@@ -146,3 +148,60 @@ TESTS PERFORMED: Automated test execution across 60 test cases covering continuo
 TEST RESULTS: 60 passed, 0 failed, 100% pass rate in 16.23s.  
 KNOWN ISSUES: None in Phase 4 scope.  
 GIT COMMIT: 63b0d81ef64f3b21de586eab116e785932cdcd0e  
+
+## [0.4.0-alpha] - 2026-11-22
+
+CHANGE ID: CHG-20261122-004  
+FEATURE ID: F-009, F-010, F-011, F-012  
+DATE: 2026-11-22  
+VERSION: 0.4.0-alpha  
+CHANGE TYPE: NEW FEATURE  
+DESCRIPTION: Implemented Phase 5 – AI Inference Core, OpenVINO Acceleration, YOLO Object Detection, ByteTrack Multi-Object Tracking, AI Event Processor, and AI Intelligence Dashboard. Built OpenVINO inference engine with dynamic device probing (Intel UHD 730 GPU primary, CPU AVX2 fallback), synchronous/asynchronous model compilation, and fallback ONNX Runtime engine. Created AI model manager with local model catalog, SHA-256 integrity verification, and version management. Built dedicated per-channel asynchronous AI inference workers with bounded queues, oldest-frame-drop backpressure, and configurable frame sampling rate. Implemented YOLO object detection engine with aspect-ratio letterboxing, float32 normalization, NMS suppression, and confidence filtering for surveillance target classes (person, car, bus, truck, motorcycle, bicycle). Implemented pure-Python and lap-accelerated ByteTrack multi-object tracker with Kalman filter box prediction, Hungarian assignment, track lifecycle management (Active, Lost, Removed), and strict per-camera tracker isolation. Developed AI event processor with configurable deduplication suppression window, severity mapping, JPEG detection snapshot capture, and AI event-triggered recording integrated with RecordingManager. Decoupled AI database entities (AIJob, Detection, ObjectTrack, AIEvent) from strict device foreign keys to support logical channels in SQLite/PostgreSQL with Alembic migration 49b81e4a112f. Built PySide6 AI Intelligence Dashboard workspace widget featuring live telemetry cards, per-channel inference metrics table, detection class breakdown, and recent AI events table mounted at navigation index 3.  
+FILES CREATED:  
+- `models/yolov8n_surveillance.onnx`
+- `engines/ai_engine/__init__.py`
+- `engines/ai_engine/inference_engine.py`
+- `engines/ai_engine/inference_worker.py`
+- `engines/ai_engine/model_manager.py`
+- `engines/detection_engine/__init__.py`
+- `engines/detection_engine/yolo_detector.py`
+- `engines/tracking_engine/__init__.py`
+- `engines/tracking_engine/byte_tracker.py`
+- `engines/tracking_engine/track_manager.py`
+- `engines/event_engine/__init__.py`
+- `engines/event_engine/event_processor.py`
+- `modules/ai_intelligence/__init__.py`
+- `modules/ai_intelligence/ai_dashboard_widget.py`
+- `database/migrations/versions/49b81e4a112f_phase5_ai_inference_and_tracking.py`
+- `tests/unit/test_ai_inference_engine.py`
+- `tests/unit/test_detection_and_tracking.py`
+- `tests/unit/test_ai_event_processor.py`
+- `tests/integration/test_ai_pipeline.py`
+- `tests/integration/test_ai_dashboard_ui.py`
+- `tests/performance/test_ai_performance.py`
+FILES MODIFIED:  
+- `VERSION`
+- `requirements/base.txt`
+- `core/config/settings.py`
+- `database/models/ai.py`
+- `engines/video_engine/rtsp_streamer.py`
+- `engines/video_engine/stream_manager.py`
+- `engines/recording_engine/recording_manager.py`
+- `app/bootstrap.py`
+- `app/main.py`
+- `tests/conftest.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/CHANGELOG.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE_DESIGN.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/TEST_REPORTS.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/USER_MANUAL.md`
+FILES DELETED: None  
+DATABASE CHANGES: Applied Alembic revision `49b81e4a112f`: updated `ai_jobs` with `execution_device` (VARCHAR(20)) and `actual_fps` (FLOAT); decoupled `channel_id` from strict device foreign key constraint on `ai_jobs`, `detections`, `object_tracks`, and `ai_events` to support logical surveillance channels.  
+DEPENDENCIES CHANGED: Installed and pinned `onnx>=1.23.0` and `lap>=0.5.0` in `requirements/base.txt`.  
+TESTS PERFORMED: Automated test execution across 90 test cases spanning OpenVINO CPU/GPU inference, ONNX Runtime fallback, model registration with SHA-256, YOLO preprocessing/postprocessing, ByteTrack tracking lifecycle and lost/recovery, multi-camera tracking isolation, AI event deduplication, snapshot capture, AI-event-triggered recording, fault isolation (recording continuity during AI crash), worker restart, UI dashboard rendering, and performance benchmarks for 1, 4, and 16 camera streams.  
+TEST RESULTS: 90 passed, 0 failed, 100% pass rate in 18.55s.  
+KNOWN ISSUES: Physical camera deployment requires operator to drop in desired YOLO weights; default verified ONNX model and OpenVINO IR are operational offline.  
+GIT COMMIT: ccc1e724859327fd92ee401e3c7bfc3e1c64741a
