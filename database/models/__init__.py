@@ -17,7 +17,16 @@ from database.models.devices import (
     StreamHealthLog,
     NVRChannelMapping,
 )
-from database.models.recordings import StorageVolume, Recording, RecordingSegment, RecordingSchedule
+from database.models.recordings import (
+    StorageVolume,
+    StorageEvent,
+    Recording,
+    RecordingSegment,
+    RecordingSchedule,
+    RecordingHealthLog,
+    PlaybackSession,
+    ExportJob,
+)
 from database.models.ai import AIModel, AIModelVersion, AIJob, Detection, ObjectTrack, AIEvent
 
 __all__ = [
@@ -40,9 +49,13 @@ __all__ = [
     "StreamHealthLog",
     "NVRChannelMapping",
     "StorageVolume",
+    "StorageEvent",
     "Recording",
     "RecordingSegment",
     "RecordingSchedule",
+    "RecordingHealthLog",
+    "PlaybackSession",
+    "ExportJob",
     "AIModel",
     "AIModelVersion",
     "AIJob",

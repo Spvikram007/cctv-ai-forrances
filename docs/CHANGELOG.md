@@ -104,4 +104,45 @@ DEPENDENCIES CHANGED: Installed and pinned `cryptography>=50.0.0` with `cffi` an
 TESTS PERFORMED: Automated test execution across 39 test cases covering WS-Discovery XML parsing, ONVIF SOAP methods, RTSP stream worker lifecycle, bounded queue overflow, frame dropping, credential encryption/decryption, database persistence, multi-channel layouts, and performance benchmarks for 1, 4, and 16 streams.  
 TEST RESULTS: 39 passed, 0 failed, 100% pass rate in 7.46s.  
 KNOWN ISSUES: Physical ONVIF/RTSP cameras require local network attachment; test doubles and synthetic test streams verify 100% of pipeline in offline testing.  
-GIT COMMIT: fc0746ad1f5eed13443b3cbbd1bc95b921edb3ee  
+## [0.3.0-alpha] - 2026-11-22
+
+CHANGE ID: CHG-20261122-003  
+FEATURE ID: F-007, F-008, F-021  
+DATE: 2026-11-22  
+VERSION: 0.3.0-alpha  
+CHANGE TYPE: NEW FEATURE  
+DESCRIPTION: Implemented Phase 4 – Surveillance Recording and Advanced Playback Engine. Features dedicated per-channel recording workers decoupled from UI rendering, continuous, manual, motion, and AI-event-triggered segmented recording, memory-efficient pre-event and post-event ring buffering (`deque`), automatic video segmentation with SHA-256 integrity sealing, storage volume health monitoring with low-disk warning thresholds, automatic retention pruning strictly protecting locked evidence (`is_locked=True`), crash and restart recording recovery service (`RecordingRecoveryService`), synchronized multi-camera playback controller (`SynchronizedPlaybackController`) with master clock, variable speeds (0.25x to 16.0x), frame stepping (+/-1 frame), recording gap detection, custom interactive QPainter Timeline UI widget with zoom and drag seeking, MP4 forensic video clip exporter (`VideoExporter`) generating SHA-256 checksums and sidecar audit manifests, and full integration into the Command Center desktop workspace.  
+FILES CREATED:  
+- `database/migrations/versions/328e2912c14c_phase4_recordings_and_playback.py`
+- `engines/recording_engine/recorder.py`
+- `engines/recording_engine/recording_manager.py`
+- `engines/recording_engine/storage_manager.py`
+- `engines/video_engine/playback_controller.py`
+- `engines/video_engine/video_exporter.py`
+- `modules/video_playback/timeline_widget.py`
+- `modules/video_playback/playback_widget.py`
+- `tests/unit/test_recording_engine.py`
+- `tests/unit/test_storage_manager.py`
+- `tests/unit/test_playback_engine.py`
+- `tests/unit/test_video_exporter.py`
+- `tests/integration/test_playback_ui.py`
+- `tests/performance/test_recording_playback_performance.py`
+FILES MODIFIED:  
+- `database/models/recordings.py`
+- `database/models/__init__.py`
+- `app/bootstrap.py`
+- `app/main.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE_DESIGN.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/TEST_REPORTS.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/USER_MANUAL.md`
+FILES DELETED: None  
+DATABASE CHANGES: Applied Alembic revision `328e2912c14c`: added `storage_events`, `playback_sessions`, and `export_jobs` tables; extended `recordings` with `codec`, `resolution_width`, `resolution_height`, `fps`, `bitrate_kbps`, `status`, and `is_locked`; decoupled `channel_id` from strict device FK constraint to support logical channels.  
+DEPENDENCIES CHANGED: None (using existing OpenCV, NumPy, PySide6, SQLAlchemy).  
+TESTS PERFORMED: Automated test execution across 60 test cases covering continuous and event-triggered recording, ring buffer preservation, crash recovery, storage volume metrics, low-disk warnings, evidence retention protection, single-player seeking and gap handling, multi-camera playback master clock sync, variable speeds, frame stepping, MP4 export with SHA-256 audit manifest, Timeline QPainter rendering and scrubbing, and concurrent recording throughput benchmarks across 1, 4, and 16 channels.  
+TEST RESULTS: 60 passed, 0 failed, 100% pass rate in 16.23s.  
+KNOWN ISSUES: None in Phase 4 scope.  
+GIT COMMIT: Pending  

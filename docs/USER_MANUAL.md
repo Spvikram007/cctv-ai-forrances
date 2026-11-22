@@ -83,3 +83,38 @@ In the **Live View** workspace, use the layout toolbar buttons to dynamically sw
    - Highlight any discovered camera in the table and click **Add Selected Camera to System**.
    - Alternatively, use the **Manual Camera Addition** tab to register any custom camera, NVR, or RTSP stream by specifying the manufacturer (Hikvision, Dahua, CP PLUS, Generic), IP address, and credentials.
    - All passwords are encrypted locally using AES-256 before being committed to the database. Passwords are never stored in plaintext.
+
+---
+
+## 5. Playback & Video Investigation Workspace
+
+### 5.1 Date & Channel Selection
+1. Click **Playback** in the left navigation sidebar.
+2. In the top toolbar, select the desired investigation date using the **Date** calendar picker.
+3. Select your desired multi-camera playback layout: `1x1 (Single)`, `2x2 (4 Cameras)`, `3x3 (9 Cameras)`, or `4x4 (16 Cameras)`.
+4. Click **Refresh Footage** to load all recording segments from the catalog into the timeline tracks.
+
+### 5.2 Synchronized Multi-Camera Playback Controls
+- **Play / Pause (`▶ Play` / `⏸ Pause`)**: Starts or pauses synchronous playback across all loaded cameras driven by the master UTC clock.
+- **Stop (`⏹ Stop`)**: Halts playback and closes active video file decoders.
+- **Frame Stepping (`⏮ -1f` / `⏭ +1f`)**: Steps playback backward or forward by exactly 1 frame (1/25th of a second), essential for forensic scene investigation.
+- **Speed Selector**: Adjust playback speed smoothly between `0.25x`, `0.5x`, `1.0x`, `2.0x`, `4.0x`, `8.0x`, and `16.0x`.
+- **Gap Indication**: When a camera has no footage for a specific timestamp, the tile displays an informational standby overlay indicating `NO RECORDING AVAILABLE` with the current UTC timestamp, without interrupting playback of other cameras.
+
+### 5.3 Interactive Timeline Scrubbing & Zooming
+- **Scrub Seeking**: Click or drag anywhere along the timeline ruler or camera tracks to instantly seek all cameras to that timestamp.
+- **Color-Coded Recording Density**:
+  - **Green**: Continuous scheduled recording.
+  - **Amber / Orange**: Motion-triggered recording.
+  - **Cyan / Blue**: AI event-triggered recording (Person, Vehicle, Intrusion).
+  - **Purple**: Operator manual recording.
+  - **Dark / Blank**: Recording gap.
+- **Zooming**: Scroll your **mouse wheel** over the timeline to zoom smoothly between a broad 24-hour perspective down to a detailed 5-minute window centered around your cursor.
+
+### 5.4 Exporting Video Clips (MP4 + SHA-256)
+1. Click the **Export Clip (MP4)** button in the top toolbar to open the forensic export dialog.
+2. Specify the camera channel, Start UTC timestamp, and End UTC timestamp.
+3. Choose the destination `.mp4` file path.
+4. Check **Flag as Protected Evidence**: This guarantees that the original source footage in the storage vault is locked and will **never be deleted by automatic retention routines**.
+5. Enter case notes or investigation justification.
+6. Click **Start Export**: The exporter generates a standard MP4 file, computes its cryptographic SHA-256 checksum, and writes an adjacent forensic `{filename}_manifest.json` file for legal chain-of-custody.

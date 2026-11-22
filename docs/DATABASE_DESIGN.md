@@ -53,7 +53,17 @@ Ensures maximum read throughput and ACID transactional integrity during continuo
 - **`stream_health_logs`**: Historical telemetry per channel (`status`, `fps_measured`, `bitrate_kbps`, `latency_ms`, `dropped_frames`, `error_message`).
 - **`nvr_channel_mappings`**: Maps recorder channels to camera inputs for multi-channel NVRs and DVRs (`nvr_device_id`, `channel_number`, `mapped_camera_name`, `main_stream_url`, `sub_stream_url`).
 
+### 2.6 Phase 4 Recording & Playback Extensions
+- **`storage_events`**: Volume threshold breach events and retention audit log (`volume_id`, `event_type`, `severity`, `message`, `bytes_freed`).
+- **`playback_sessions`**: User historical playback queries and master clock tracking (`user_id`, `channels_json`, `started_at`, `ended_at`, `master_clock_timestamp`).
+- **`export_jobs`**: Video clip extraction tasks (`channel_id`, `start_time`, `end_time`, `destination_path`, `file_size_bytes`, `sha256_hash`, `status`, `progress_pct`, `is_evidence`, `created_by`, `error_message`).
+- **`recordings` Table Extended**: Added `codec`, `resolution_width`, `resolution_height`, `fps`, `bitrate_kbps`, `status` (`ACTIVE`, `COMPLETED`, `CORRUPTED`, `RECOVERED`), `is_locked` (forensic evidence lock preventing automated retention deletion). Decoupled `channel_id` to `String(64)` for logical channel independence.
+
 ## 4. Migration History (Alembic)
 - **`26108d74df4c`** (2026-11-22): `phase1_phase2_devices_and_streams`
   - Created tables: `device_credentials`, `device_discovery_records`, `nvr_channel_mappings`, `stream_health_logs`.
   - Added indexes on `device_id`, `channel_id`, `ip_address`, `mac_address`, and `is_deleted`.
+- **`328e2912c14c`** (2026-11-22): `phase4_recordings_and_playback`
+  - Created tables: `storage_events`, `playback_sessions`, `export_jobs`.
+  - Added columns to `recordings`: `codec`, `resolution_width`, `resolution_height`, `fps`, `bitrate_kbps`, `status`, `is_locked`.
+  - Added indexes on `is_locked`, `status`, `export_jobs.start_time`, `export_jobs.end_time`.

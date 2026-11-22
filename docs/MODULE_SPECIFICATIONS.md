@@ -12,10 +12,11 @@
 - **Layouts**: 1, 4, 9, 16 camera grids implemented (scalable to 25, 36, 64).
 - **Features**: Live QPainter rendering, aspect ratio preservation, camera title overlay, status dot indicator, FPS and resolution telemetry, full-screen tile double-click maximization, local snapshot capture.
 
-## Module 3: Playback Engine (`modules/video_playback`)
-- **Status**: PLANNED (Phase 4)
-- **Role**: Recorded video investigation and historical playback.
-- **Features**: Synchronized multi-timeline scrubbing, frame stepping, variable playback speed (0.25x to 16x), MP4 clip export.
+## Module 3: Playback Engine (`modules/video_playback`, `engines/video_engine`)
+- **Status**: COMPLETE (Phase 4)
+- **Role**: Synchronized multi-camera recorded video investigation and historical playback.
+- **Components**: `SingleCameraPlayer`, `SynchronizedPlaybackController`, `TimelineWidget` (QPainter), `PlaybackWidget`, `ClipExportDialog`, `VideoExporter`.
+- **Features**: Synchronized master clock playback across 1, 4, 9, 16 camera layouts, frame-by-frame stepping (+/-1 frame @ 25 FPS), variable speeds (0.25x, 0.5x, 1x, 2x, 4x, 8x, 16x), recording gap detection with standby graphic, interactive color-coded timeline with mouse scrub seeking and wheel zoom (24h to 5m), time-bounded MP4 video clip export with SHA-256 integrity hash, sidecar audit JSON manifest, and legal evidence lock.
 
 ## Module 4: AI Object Detection (`engines/detection_engine`)
 - **Status**: PLANNED (Phase 5)
@@ -66,9 +67,11 @@
 - **Role**: Centralized incident routing.
 - **Capabilities**: Real-time audio/visual alert triggers, acknowledgement workflows, operator assignment, and alarm logs.
 
-## Module 14: Recording & Storage (`modules/recording_storage`, `engines/recording_engine`)
-- **Status**: PLANNED (Phase 4, Phase 13)
-- **Role**: Storage volume quota management, retention policies, and segmented video writing.
+## Module 14: Recording & Storage (`engines/recording_engine`)
+- **Status**: COMPLETE (Phase 4)
+- **Role**: Storage volume quota management, retention policies, segmented video writing, and crash recovery.
+- **Components**: `ChannelRecordingWorker`, `RecordingManager`, `StorageManager`, `RecordingRecoveryService`.
+- **Features**: Decoupled worker threads, CONTINUOUS, MANUAL, MOTION, and AI_EVENT recording modes, in-memory pre-event and post-event ring buffering (`deque`), automatic video segmentation with SHA-256 seal, storage volume health monitoring with low-disk warning events, automated retention pruning strictly preserving evidence (`is_locked=True`), DB-filesystem consistency audit, and startup crash recovery of unclosed recordings.
 
 ## Module 15: User Management (`modules/user_management`)
 - **Status**: Core Models & Seeding COMPLETE (Phase 0)

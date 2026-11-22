@@ -86,3 +86,16 @@ The database architecture employs an abstract repository model via SQLAlchemy 2.
 
 ### 3.7 Local Credential Vault
 - **AES-256-GCM Encryption**: Device passwords and authentication credentials are encrypted using `CredentialVault` before being written to the database. Master keys are derived using PBKDF2HMAC (100,000 iterations) salted and bound to local machine hardware identity. Passwords are never stored or logged in plaintext.
+
+### 3.8 Recording Engine & Storage Management
+- **Dedicated Channel Recording Workers**: Each channel can run an independent `ChannelRecordingWorker` thread decoupled from live stream rendering and Qt UI loops. Supports CONTINUOUS, MANUAL, MOTION, and AI_EVENT modes.
+- **Pre-Event & Post-Event Ring Buffering**: In-memory ring buffer (`deque(maxlen=pre_sec * fps)`) stores uncompressed frames prior to event triggers. When motion or AI events fire, buffered pre-event frames are flushed at the head of the event segment, ensuring zero lead-time data loss.
+- **Segmentation & SHA-256 Sealing**: Continuous footage is automatically segmented into standard intervals (configurable from 60s to 900s). Each completed MP4 segment is hashed with SHA-256 and sealed in the database catalog with size and millisecond timestamps.
+- **Storage Quota & Retention Pruning**: `StorageManager` tracks volume capacity, free disk space, and emits `WARNING_LOW_DISK` alerts when thresholds (85% warning, 95% critical) are crossed. Automatic retention pruning cleans up expired unlocked recordings while strictly guaranteeing that files flagged as evidence (`is_locked == True`) are never deleted.
+- **Crash & Power-Loss Recovery**: `RecordingRecoveryService` automatically scans for unfinalized `ACTIVE` segments at startup, probes actual video duration and frame counts via OpenCV, computes cryptographic hashes, and updates records to `RECOVERED` status.
+
+### 3.9 Synchronized Playback & Forensic Video Export
+- **Master Playback Clock**: `SynchronizedPlaybackController` drives multi-camera synchronized playback via a high-precision master UTC clock. Supports variable playback speeds (0.25x, 0.5x, 1x, 2x, 4x, 8x, 16x) and single-frame stepping (+/-1 frame at 25 FPS).
+- **SingleCameraPlayer & Gap Handling**: Decodes segment MP4 files on demand and uses `CAP_PROP_POS_MSEC` for millisecond-level timestamp seeking. When a channel has no footage at a given timestamp, the player automatically identifies the recording gap and renders a standardized standby gap graphic with timestamp telemetry.
+- **Interactive Timeline Widget**: Custom `QPainter` widget rendering 24-hour channel tracks with color-coded recording modes (green for continuous, amber for motion, cyan for AI events, purple for manual). Supports mouse drag scrubbing, click seeking, and mouse wheel zoom (from 24 hours down to 5 minutes).
+- **Video Export Engine (`VideoExporter`)**: Extracts time-bounded MP4 clips across single or multiple recording segments, computes SHA-256 file checksums, generates sidecar audit JSON manifests, and automatically locks source recordings as protected evidence when requested.

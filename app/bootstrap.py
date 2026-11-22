@@ -89,6 +89,14 @@ def bootstrap_application() -> Dict[str, Any]:
     db_health = db_manager.health_check()
     logger.info("Database initialized successfully (Backend: %s, Latency: %s ms)", db_health.get("backend"), db_health.get("latency_ms"))
 
+    # 5. Crash / Restart Recording Recovery
+    from engines.recording_engine.recorder import RecordingRecoveryService
+    recovered_count = RecordingRecoveryService.recover_interrupted_recordings()
+    if recovered_count > 0:
+        logger.warning("Recovered %d interrupted recording segments from prior session.", recovered_count)
+    else:
+        logger.info("No unclosed recording segments found; storage integrity verified.")
+
     return {
         "status": "READY",
         "app_name": settings.app_name,
@@ -96,4 +104,5 @@ def bootstrap_application() -> Dict[str, Any]:
         "hardware_tier": report.hardware_acceleration_tier,
         "openvino_devices": report.openvino.available_devices,
         "db_health": db_health,
+        "recovered_recordings": recovered_count,
     }

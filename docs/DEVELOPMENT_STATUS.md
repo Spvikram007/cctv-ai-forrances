@@ -8,7 +8,7 @@
 | **Phase 1** | **Desktop UI & Live Monitoring Grid** | **COMPLETE** | Dynamic 1, 4, 9, 16 camera monitoring grid with tile double-click maximization, OSD telemetry overlays (FPS, resolution, status dot), and snapshot capture. |
 | **Phase 2** | **Device Integration & RTSP Stream Engine** | **COMPLETE** | ONVIF WS-Discovery (UDP multicast probe), subnet IP scanner, pure-Python ONVIF client with WS-Security PasswordDigest and PTZ, Hikvision/Dahua/CP PLUS adapters, bounded queue RTSP worker engine, and AES-256 credential vault. |
 | **Phase 3** | **Stream Polish & PTZ Controller** | **PLANNED** | Mainstream/substream auto-switching, active camera PTZ joystick/overlay controls, audio streaming, and preset patrolling. |
-| **Phase 4** | **Recording & Playback Engines** | **PLANNED** | Continuous/motion/AI video segment recording, keyframe indexer, synchronized multi-camera timeline playback, and clip export. |
+| **Phase 4** | **Recording & Playback Engines** | **COMPLETE** | Continuous/motion/AI segmented recording, pre/post ring buffering, SHA-256 seal, storage volume retention with evidence locking, crash recovery, multi-camera synchronized playback (1/4/9/16), interactive timeline, and forensic MP4 export. |
 | **Phase 5** | **AI Inference Core (OpenVINO)** | **PLANNED** | OpenVINO Intel GPU acceleration pipeline, YOLO/object detection, ByteTrack multi-object tracking, and CPU fallback scheduler. |
 | **Phase 6** | **Smart Video Investigation** | **PLANNED** | High-speed metadata indexing and parametric search for object classes, clothing attributes, plate numbers, and time windows. |
 | **Phase 7** | **Biometric Face & ANPR Intelligence** | **PLANNED** | Authorized local face enrollment and verification (512-d embeddings), ANPR plate detection and OCR pipeline. |
@@ -25,8 +25,8 @@
 
 ## 2. Current Sprint Focus
 
-- **Completed Tasks**: Phase 0 Foundation (F-001, F-002, F-022), Phase 1 Live View & Discovery UI (F-006), and Phase 2 Device Integration & RTSP Stream Engine (F-003, F-004, F-005).
-- **Next Task**: Phase 3 & Phase 4: Recording & Playback Engines (F-007, F-008) — Continuous/motion/AI video recording to disk, keyframe indexing, multi-camera synchronized timeline playback, variable speed scrubbing, and clip export.
+- **Completed Tasks**: Phase 0 Foundation (F-001, F-002, F-022), Phase 1 Live View & Discovery UI (F-006), Phase 2 Device Integration & RTSP Stream Engine (F-003, F-004, F-005), and Phase 4 Surveillance Recording, Storage Retention & Synchronized Playback Engine (F-007, F-008, F-021).
+- **Next Task**: Phase 3 PTZ Controller & Audio or Phase 5 AI Inference Core (OpenVINO GPU/CPU Detection & Tracking).
 
 ---
 

@@ -21,8 +21,11 @@ from app.application_state import app_state
 from resources.styles.theme import DARK_THEME_QSS
 from modules.dashboard.dashboard_widget import DashboardWidget
 from modules.live_monitoring.live_view_widget import LiveViewWidget
+from modules.video_playback.playback_widget import PlaybackWidget
 from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
 from engines.video_engine.stream_manager import stream_manager
+from engines.video_engine.playback_controller import playback_controller
+from engines.recording_engine.recording_manager import recording_manager
 from core.workers.worker_manager import worker_manager
 from database.database_manager import db_manager
 
@@ -115,8 +118,12 @@ class MainWindow(QMainWindow):
         self.live_view_widget = LiveViewWidget()
         self.stack.addWidget(self.live_view_widget)
 
-        # Views 2 to 14: Module Placeholders
-        for idx, (title, desc) in enumerate(self.NAV_ITEMS[2:], start=2):
+        # View 2: Playback Workspace (Synchronized Multi-Camera Playback & Export)
+        self.playback_widget = PlaybackWidget()
+        self.stack.addWidget(self.playback_widget)
+
+        # Views 3 to 14: Module Placeholders
+        for idx, (title, desc) in enumerate(self.NAV_ITEMS[3:], start=3):
             phase_num = f"Phase {idx}" if idx < 12 else "Phase 12+"
             placeholder = ModulePlaceholderWidget(
                 module_title=f"{title.upper()}",
@@ -261,6 +268,8 @@ class MainWindow(QMainWindow):
         """Handles clean application shutdown on window close."""
         self.clock_timer.stop()
         self.telemetry_timer.stop()
+        recording_manager.stop_all()
+        playback_controller.stop()
         stream_manager.stop_all()
         worker_manager.shutdown()
         db_manager.close()
