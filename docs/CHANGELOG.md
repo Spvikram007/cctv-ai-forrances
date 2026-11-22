@@ -104,4 +104,4 @@ DEPENDENCIES CHANGED: Installed and pinned `cryptography>=50.0.0` with `cffi` an
 TESTS PERFORMED: Automated test execution across 39 test cases covering WS-Discovery XML parsing, ONVIF SOAP methods, RTSP stream worker lifecycle, bounded queue overflow, frame dropping, credential encryption/decryption, database persistence, multi-channel layouts, and performance benchmarks for 1, 4, and 16 streams.  
 TEST RESULTS: 39 passed, 0 failed, 100% pass rate in 7.46s.  
 KNOWN ISSUES: Physical ONVIF/RTSP cameras require local network attachment; test doubles and synthetic test streams verify 100% of pipeline in offline testing.  
-GIT COMMIT: Pending Phase 1 & 2 commit.  
+GIT COMMIT: fc0746ad1f5eed13443b3cbbd1bc95b921edb3ee  
