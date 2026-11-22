@@ -51,4 +51,4 @@ DEPENDENCIES CHANGED: Installed and pinned PySide6 (6.12.0), OpenVINO (2026.4.1)
 TESTS PERFORMED: Automated test execution across 17 test cases spanning hardware detection, Pydantic configuration, structured credential-redacting logging, SQLite WAL database session management and transactions, thread worker pool lifecycle, and PySide6 offscreen GUI smoke testing.  
 TEST RESULTS: 17 passed, 0 failed, 100% pass rate in 1.08s.  
 KNOWN ISSUES: None in Phase 0 scope.  
-GIT COMMIT: Pending initial commit.  
+GIT COMMIT: e4e88ed275c368df92175a80e288217bec27178a  
