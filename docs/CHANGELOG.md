@@ -145,4 +145,4 @@ DEPENDENCIES CHANGED: None (using existing OpenCV, NumPy, PySide6, SQLAlchemy).
 TESTS PERFORMED: Automated test execution across 60 test cases covering continuous and event-triggered recording, ring buffer preservation, crash recovery, storage volume metrics, low-disk warnings, evidence retention protection, single-player seeking and gap handling, multi-camera playback master clock sync, variable speeds, frame stepping, MP4 export with SHA-256 audit manifest, Timeline QPainter rendering and scrubbing, and concurrent recording throughput benchmarks across 1, 4, and 16 channels.  
 TEST RESULTS: 60 passed, 0 failed, 100% pass rate in 16.23s.  
 KNOWN ISSUES: None in Phase 4 scope.  
-GIT COMMIT: Pending  
+GIT COMMIT: 63b0d81ef64f3b21de586eab116e785932cdcd0e  
