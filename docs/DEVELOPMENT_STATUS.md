@@ -12,6 +12,7 @@
 | **Phase 5** | **AI Inference Core (OpenVINO)** | **COMPLETE** | OpenVINO Intel UHD 730 GPU acceleration pipeline, CPU AVX2 fallback, YOLO object detection (person, car, bus, truck, motorcycle, bicycle), ByteTrack multi-object tracking, strict per-camera tracking isolation, AI event processor with deduplication, snapshot capture, AI-event-triggered recording, and AI Intelligence dashboard workspace. |
 | **Phase 6** | **Advanced Video Analytics & Rules**| **COMPLETE** | Polygon intrusion zones (F-013), virtual tripwire line crossing (F-014), loitering dwell time with occlusion tolerance (F-015), people and vehicle counting with real-time occupancy (F-016), movement heatmaps with Jet color contouring (F-017), interactive drawing canvas, rules management UI, and Alembic migration `57a91c3e80ab`. |
 | **Phase 7** | **Authorized Face & ANPR Intelligence** | **COMPLETE** | Authorized local face intelligence (F-026), biometric quality filtering, AES-256-GCM hardware-bound template vault, cosine similarity candidate matching, human verification workflows, immutable biometric audit logs, dedicated ANPR engine (F-027) with plate localization, deskewing, CLAHE, offline OCR, positional confusion resolution, regional format validation, vehicle track association caching (10.0s window), watchlist alerts, ANPR search engine with CSV export, PySide6 ANPRWorkspaceWidget and FaceWorkspaceWidget, and Alembic migration `62f4c08e921d`. |
+| **Phase 7.1** | **Biometric Security & ANPR Hardening** | **COMPLETE** | Windows DPAPI master key protection, versioned envelopes (`v{ver}:{nonce}:{cipher}`), key rotation with DB re-encryption, PBKDF2 disaster recovery bundles, learned MobileFaceNet 512-d ONNX embeddings, upper-body non-face rejection, genuine/impostor FAR/FRR calibration, learned 36-class plate character CNN, multi-line / two-tier square plate support, 4-tier RBAC, automated 30-day retention enforcement, multi-camera streaming resilience (Hikvision, Dahua, CP PLUS, ONVIF), BIOMETRIC_SECURITY_REVIEW.md report, 178 automated tests (100% pass). |
 | **Phase 8** | **Advanced Behaviour Analytics** | **PLANNED** | Virtual line-crossing, perimeter intrusion zones, loitering, crowd density, and abandoned object detectors. |
 | **Phase 9** | **Video Enhancement Engine** | **PLANNED** | Low-light brightening, dehazing, sharpening, motion blur reduction, and AI super-resolution (raw footage preserved). |
 | **Phase 10** | **Digital Forensics & Authenticity** | **PLANNED** | Cryptographic SHA-256 evidence chain of custody, frame discontinuity audits, duplicate frame analysis, and forensic reports. |
@@ -25,9 +26,9 @@
 
 ## 2. Current Sprint Focus
 
-- **Current Version**: `0.6.0-alpha`
-- **Completed Tasks**: Phase 0 Foundation (F-001, F-002, F-022), Phase 1 Live View & Discovery UI (F-006), Phase 2 Device Integration & RTSP Stream Engine (F-003, F-004, F-005), Phase 4 Surveillance Recording, Storage Retention & Synchronized Playback Engine (F-007, F-008, F-021), Phase 5 AI Inference Core, Detection & ByteTrack Tracking (F-009, F-010, F-011, F-012), Phase 6 Advanced Video Analytics & Rules (F-013, F-014, F-015, F-016, F-017), and Phase 7 Authorized Face & ANPR Intelligence (F-026, F-027).
-- **Automated Test Baseline**: 143 passed, 0 failed, 100% pass rate.
+- **Current Version**: `0.6.1-alpha`
+- **Completed Tasks**: Phase 0 Foundation (F-001, F-002, F-022), Phase 1 Live View & Discovery UI (F-006), Phase 2 Device Integration & RTSP Stream Engine (F-003, F-004, F-005), Phase 4 Surveillance Recording, Storage Retention & Synchronized Playback Engine (F-007, F-008, F-021), Phase 5 AI Inference Core, Detection & ByteTrack Tracking (F-009, F-010, F-011, F-012), Phase 6 Advanced Video Analytics & Rules (F-013, F-014, F-015, F-016, F-017), Phase 7 Authorized Face & ANPR Intelligence (F-026, F-027), and Phase 7.1 Biometric Security, Validation & Production Hardening Pass.
+- **Automated Test Baseline**: 178 passed, 0 failed, 100% pass rate.
 - **Next Task**: Phase 3 PTZ Controller & Audio, or Phase 8 Advanced Behaviour Analytics.
 
 ---

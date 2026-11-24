@@ -25,14 +25,15 @@ class PlateDetector:
     """
     Localizes license plate candidate regions on vehicles,
     performs deskewing / perspective correction, and contrast enhancement.
+    Supports single-line (aspect ratio 2.5 - 5.5) and multi-line/square (aspect ratio 1.1 - 2.5) plates.
     """
 
     def __init__(
         self,
-        min_aspect_ratio: float = 1.8,
+        min_aspect_ratio: float = 1.1,
         max_aspect_ratio: float = 6.0,
-        min_area: int = 500,
-        max_area: int = 60000,
+        min_area: int = 400,
+        max_area: int = 80000,
     ) -> None:
         self.min_aspect_ratio = min_aspect_ratio
         self.max_aspect_ratio = max_aspect_ratio
@@ -44,12 +45,13 @@ class PlateDetector:
         """
         Detects candidate license plate regions in a cropped vehicle image.
         Returns a list of PlateCandidate objects ordered by detection confidence.
+        Supports single-line and two-tier / square plates.
         """
         if vehicle_bgr is None or vehicle_bgr.size == 0:
             return []
 
         h, w = vehicle_bgr.shape[:2]
-        if h < 40 or w < 60:
+        if h < 30 or w < 40:
             return []
 
         # 1. Grayscale & Noise Reduction
@@ -59,9 +61,17 @@ class PlateDetector:
         # 2. Vertical Edge Detection (Sobel) to capture vertical plate characters
         sobelx = cv2.Sobel(blurred, cv2.CV_8U, 1, 0, ksize=3)
 
-        # 3. Morphological Closing to fuse character edges into a solid rectangular blob
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 3))
-        closed = cv2.morphologyEx(sobelx, cv2.MORPH_CLOSE, kernel)
+        # 3. Morphological Closing: combine both horizontal and square structuring elements
+        # Kernel 1: Horizontal fusion for standard single-line rectangular plates (17x3)
+        kernel_h = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 3))
+        closed_h = cv2.morphologyEx(sobelx, cv2.MORPH_CLOSE, kernel_h)
+
+        # Kernel 2: Square fusion for two-tier / multi-line plates (9x9)
+        kernel_sq = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+        closed_sq = cv2.morphologyEx(sobelx, cv2.MORPH_CLOSE, kernel_sq)
+
+        # Fuse edge maps
+        closed = cv2.bitwise_or(closed_h, closed_sq)
 
         # 4. Otsu Binarization
         _, thresh = cv2.threshold(closed, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -81,8 +91,8 @@ class PlateDetector:
 
             if self.min_aspect_ratio <= aspect_ratio <= self.max_aspect_ratio:
                 # Add padding around detected plate
-                pad_x = int(cw * 0.05)
-                pad_y = int(ch * 0.10)
+                pad_x = int(cw * 0.08)
+                pad_y = int(ch * 0.18)
                 x1 = max(0, x - pad_x)
                 y1 = max(0, y - pad_y)
                 x2 = min(w, x + cw + pad_x)
@@ -96,10 +106,12 @@ class PlateDetector:
                 deskewed = self.correct_perspective(plate_crop, cnt - np.array([x1, y1]))
                 enhanced = self.enhance_plate(deskewed)
 
-                # Heuristic confidence based on edge density and aspect ratio ideal (~3.5)
-                ideal_ratio = 3.5
-                ratio_diff = abs(aspect_ratio - ideal_ratio) / ideal_ratio
-                conf = max(0.40, min(0.98, 1.0 - (ratio_diff * 0.5)))
+                # Confidence heuristic: single-line ideal ~3.5, two-tier ideal ~1.4
+                if aspect_ratio < 2.2:
+                    ratio_diff = abs(aspect_ratio - 1.4) / 1.4
+                else:
+                    ratio_diff = abs(aspect_ratio - 3.5) / 3.5
+                conf = max(0.40, min(0.98, 1.0 - (ratio_diff * 0.45)))
 
                 candidates.append(
                     PlateCandidate(
@@ -177,13 +189,13 @@ class PlateDetector:
     def enhance_plate(self, plate_bgr: np.ndarray) -> np.ndarray:
         """
         Enhances plate contrast and clarity for OCR using CLAHE and bilateral filtering.
-        Standardizes output size to 140x40.
+        Standardizes output size to 200x50.
         """
         if plate_bgr is None or plate_bgr.size == 0:
-            return np.zeros((40, 140), dtype=np.uint8)
+            return np.zeros((50, 200), dtype=np.uint8)
 
-        # Resize to standard OCR height
-        resized = cv2.resize(plate_bgr, (140, 40), interpolation=cv2.INTER_CUBIC)
+        # Resize to standard OCR dimensions
+        resized = cv2.resize(plate_bgr, (200, 50), interpolation=cv2.INTER_CUBIC)
         gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
 
         # Adaptive histogram equalization

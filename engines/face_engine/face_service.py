@@ -10,7 +10,8 @@ import json
 import threading
 from typing import Optional, List, Dict, Tuple, Any
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import shutil
 from pathlib import Path
 
 import cv2
@@ -56,6 +57,41 @@ class FaceIntelligenceService:
 
     _instance: Optional["FaceIntelligenceService"] = None
     _lock = threading.Lock()
+
+    ROLE_PERMISSIONS: Dict[str, set] = {
+        "ADMIN": {
+            "ENROLL_IDENTITY",
+            "REVOKE_IDENTITY",
+            "ROTATE_KEYS",
+            "PURGE_RETENTION",
+            "VERIFY_MATCH",
+            "VIEW_AUDIT_LOGS",
+        },
+        "SECURITY_OPERATOR": {
+            "ENROLL_IDENTITY",
+            "VERIFY_MATCH",
+        },
+        "AUDITOR": {
+            "VIEW_AUDIT_LOGS",
+        },
+        "VIEWER": set(),
+    }
+
+    @classmethod
+    def check_rbac_permission(cls, user_role: Optional[str], action: str) -> Tuple[bool, str]:
+        """
+        Validates whether the user's role possesses authorization for the biometric action.
+        Defaults to ADMIN if role is not supplied (e.g. system background processes).
+        """
+        role = (user_role or "ADMIN").upper()
+        if role not in cls.ROLE_PERMISSIONS:
+            return False, f"Unknown user role: '{role}'"
+
+        allowed_actions = cls.ROLE_PERMISSIONS[role]
+        if action not in allowed_actions:
+            return False, f"Role '{role}' is not authorized to perform biometric action '{action}'"
+
+        return True, ""
 
     def __new__(cls, *args, **kwargs):
         with cls._lock:
@@ -140,11 +176,18 @@ class FaceIntelligenceService:
         department: Optional[str] = None,
         authorization_ref: Optional[str] = None,
         valid_until: Optional[datetime] = None,
+        user_role: Optional[str] = None,
     ) -> Tuple[bool, str]:
         """
         Enrolls an authorized individual into the biometric catalog.
         Validates quality, extracts 512-d embedding, encrypts with AES-256, and logs audit record.
+        Enforces RBAC authorization checks.
         """
+        # RBAC Check
+        allowed, err_msg = self.check_rbac_permission(user_role, "ENROLL_IDENTITY")
+        if not allowed:
+            return False, f"RBAC access denied: {err_msg}"
+
         if face_image_bgr is None or face_image_bgr.size == 0:
             return False, "Invalid face image (empty image data)"
 
@@ -234,10 +277,18 @@ class FaceIntelligenceService:
         identity_id: str,
         reason: str,
         revoked_by_user_id: Optional[str] = None,
+        user_role: Optional[str] = None,
     ) -> bool:
         """
         Permanently revokes an identity's biometric template.
+        Enforces RBAC authorization checks.
         """
+        # RBAC Check
+        allowed, err_msg = self.check_rbac_permission(user_role, "REVOKE_IDENTITY")
+        if not allowed:
+            logger.warning("Revoke identity denied: %s", err_msg)
+            return False
+
         try:
             now_dt = datetime.now(timezone.utc)
             with db_manager.get_session() as session:
@@ -438,10 +489,18 @@ class FaceIntelligenceService:
         event_id: str,
         verified_by_user_id: str,
         is_confirmed: bool = True,
+        user_role: Optional[str] = None,
     ) -> bool:
         """
         Human operator verification workflow for biometric candidate match.
+        Enforces RBAC verification authorization.
         """
+        # RBAC Check
+        allowed, err_msg = self.check_rbac_permission(user_role, "VERIFY_MATCH")
+        if not allowed:
+            logger.warning("Verify match event denied: %s", err_msg)
+            return False
+
         try:
             now_dt = datetime.now(timezone.utc)
             with db_manager.get_session() as session:
@@ -466,6 +525,152 @@ class FaceIntelligenceService:
         except Exception as e:
             logger.error("Verification update error: %s", e)
             return False
+
+    def rotate_biometric_keys(
+        self,
+        user_role: Optional[str] = "ADMIN",
+        user_id: Optional[str] = "admin",
+    ) -> Tuple[bool, str]:
+        """
+        Rotates the AES-256 DPAPI master key and re-encrypts all stored biometric templates.
+        Enforces strict ADMIN RBAC authorization and logs an immutable audit event.
+        """
+        allowed, err_msg = self.check_rbac_permission(user_role, "ROTATE_KEYS")
+        if not allowed:
+            return False, f"RBAC access denied: {err_msg}"
+
+        try:
+            now_dt = datetime.now(timezone.utc)
+            with db_manager.get_session() as session:
+                templates = session.query(FaceTemplate).all()
+                decrypted_pairs: List[Tuple[FaceTemplate, np.ndarray]] = []
+
+                # 1. Decrypt all existing templates under current key
+                for tmpl in templates:
+                    try:
+                        emb = FaceBiometricVault.decrypt_template(tmpl.encrypted_template)
+                        decrypted_pairs.append((tmpl, emb))
+                    except Exception as dec_err:
+                        logger.warning("Skipping undecryptable historical template %s during key rotation: %s", tmpl.id, dec_err)
+
+                # 2. Rotate master key in vault
+                new_key = FaceBiometricVault.rotate_master_key()
+
+                # 3. Re-encrypt all templates under new key
+                for tmpl, emb in decrypted_pairs:
+                    tmpl.encrypted_template = FaceBiometricVault.encrypt_template(emb)
+
+                # 4. Audit Log
+                audit = BiometricAuditLog(
+                    user_id=user_id,
+                    action="ROTATE_MASTER_KEY",
+                    details_json=json.dumps({
+                        "re_encrypted_count": len(decrypted_pairs),
+                        "key_version": FaceBiometricVault._active_key_version,
+                    }),
+                    timestamp=now_dt,
+                )
+                session.add(audit)
+                session.commit()
+
+            # 5. Reload in-memory cache
+            self.reload_enrolled_templates()
+            logger.info("Successfully completed biometric key rotation: %d templates re-encrypted.", len(decrypted_pairs))
+            return True, f"Successfully rotated key and re-encrypted {len(decrypted_pairs)} biometric templates."
+        except Exception as e:
+            logger.error("Biometric key rotation failed: %s", e)
+            return False, f"Key rotation error: {e}"
+
+    def enforce_retention_policy(
+        self,
+        retention_days: int = 30,
+        purge_expired_enrollments: bool = True,
+        user_role: Optional[str] = "ADMIN",
+        user_id: Optional[str] = "system",
+    ) -> Dict[str, int]:
+        """
+        Enforces biometric privacy retention compliance:
+        - Deactivates expired enrollments (valid_until < now).
+        - Purges match events older than retention_days along with snapshot files.
+        - Records immutable audit log.
+        """
+        allowed, err_msg = self.check_rbac_permission(user_role, "PURGE_RETENTION")
+        if not allowed:
+            logger.warning("Retention enforcement denied: %s", err_msg)
+            return {"error": -1, "expired_enrollments_deactivated": 0, "match_events_purged": 0, "snapshots_deleted": 0}
+
+        counts = {
+            "expired_enrollments_deactivated": 0,
+            "match_events_purged": 0,
+            "snapshots_deleted": 0,
+        }
+
+        try:
+            now_dt = datetime.now(timezone.utc)
+            cutoff_dt = now_dt - timedelta(days=retention_days)
+
+            with db_manager.get_session() as session:
+                # 1. Expired Enrollments
+                if purge_expired_enrollments:
+                    expired_enrollments = (
+                        session.query(FaceEnrollment)
+                        .filter(
+                            FaceEnrollment.valid_until != None,
+                            FaceEnrollment.valid_until < now_dt,
+                            FaceEnrollment.status == "APPROVED",
+                        )
+                        .all()
+                    )
+                    for enr in expired_enrollments:
+                        enr.status = "EXPIRED"
+                        if enr.identity:
+                            enr.identity.is_active = False
+                            for tmpl in enr.identity.templates:
+                                tmpl.is_revoked = True
+                                tmpl.revocation_reason = "RETENTION_POLICY_EXPIRED"
+                        counts["expired_enrollments_deactivated"] += 1
+
+                # 2. Old Match Events & Snapshots
+                old_events = (
+                    session.query(FaceMatchEvent)
+                    .filter(FaceMatchEvent.timestamp < cutoff_dt)
+                    .all()
+                )
+
+                for ev in old_events:
+                    if ev.snapshot_path and os.path.exists(ev.snapshot_path):
+                        try:
+                            os.remove(ev.snapshot_path)
+                            counts["snapshots_deleted"] += 1
+                        except OSError as os_err:
+                            logger.debug("Could not remove snapshot file %s: %s", ev.snapshot_path, os_err)
+                    session.delete(ev)
+                    counts["match_events_purged"] += 1
+
+                # 3. Audit Log
+                audit = BiometricAuditLog(
+                    user_id=user_id,
+                    action="ENFORCE_RETENTION_POLICY",
+                    details_json=json.dumps({
+                        "retention_days": retention_days,
+                        "expired_deactivated": counts["expired_enrollments_deactivated"],
+                        "events_purged": counts["match_events_purged"],
+                        "snapshots_deleted": counts["snapshots_deleted"],
+                    }),
+                    timestamp=now_dt,
+                )
+                session.add(audit)
+                session.commit()
+
+            # Refresh cache if identities were deactivated
+            if counts["expired_enrollments_deactivated"] > 0:
+                self.reload_enrolled_templates()
+
+            logger.info("Biometric Retention Enforced: %s", counts)
+            return counts
+        except Exception as e:
+            logger.error("Biometric retention policy enforcement failed: %s", e)
+            return counts
 
 
 face_intelligence_service = FaceIntelligenceService()

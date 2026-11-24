@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 143
-- **Passed**: 143
+- **Total Test Cases**: 178
+- **Passed**: 178
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 19.75 seconds
+- **Total Duration**: 27.88 seconds
 
 ---
 
@@ -258,3 +258,50 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `test_multichannel_simulated_workload[4]`: **PASSED** (0.03s) — 4 camera workload (8 ANPR + 8 Face crops/s): 31.88 ms total burst duration.
 - `test_multichannel_simulated_workload[9]`: **PASSED** (0.07s) — 9 camera workload (18 ANPR + 18 Face crops/s): 71.73 ms total burst duration.
 - `test_multichannel_simulated_workload[16]`: **PASSED** (0.13s) — 16 camera workload (32 ANPR + 32 Face crops/s): 127.52 ms total burst duration, well under the 250 ms ceiling.
+
+### 30. Biometric Key Security & DPAPI Vault Suite (`tests/unit/test_biometric_vault_security.py`)
+- `test_dpapi_vault_encryption_roundtrip`: **PASSED** (0.01s) — Validates float32 bit-exact biometric vector encryption and decryption under Windows DPAPI.
+- `test_dpapi_vault_unique_nonces`: **PASSED** (0.00s) — Verifies identical templates yield distinct ciphertexts with unique 96-bit random nonces.
+- `test_dpapi_vault_version_prefix`: **PASSED** (0.00s) — Confirms versioned envelope format `v{version}:{nonce_hex}:{ciphertext_hex}`.
+- `test_dpapi_vault_tamper_detection`: **PASSED** (0.00s) — Validates AEAD authentication rejection when version header, nonce, or ciphertext byte is corrupted.
+- `test_dpapi_vault_key_rotation`: **PASSED** (0.01s) — Verifies multi-version key rotation, backward-compatible decryption of historical envelopes, and version counter increment.
+- `test_dpapi_vault_recovery_bundle_roundtrip`: **PASSED** (0.42s) — Tests disaster recovery bundle export with PBKDF2-HMAC-SHA256 (250,000 iterations) + AES-256-GCM and restoration into isolated vault.
+- `test_dpapi_vault_recovery_bundle_wrong_passphrase`: **PASSED** (0.41s) — Confirms invalid passphrase import attempts are rejected and raise `BiometricVaultError`.
+
+### 31. Face Model Deep Validation Suite (`tests/unit/test_face_model_validation.py`)
+- `test_mobilefacenet_model_loading_and_inference`: **PASSED** (0.02s) — Verifies MobileFaceNet ONNX model loading and 512-d feature extraction.
+- `test_l2_unit_normalization_enforced`: **PASSED** (0.01s) — Confirms strict $\|v\|_2 = 1.0 \pm 10^{-5}$ unit norm constraint on extracted embeddings.
+- `test_face_detector_rejects_upper_body_non_face`: **PASSED** (0.00s) — Privacy enforcement verifying upper-body person crops lacking facial geometry are strictly rejected.
+- `test_strict_facial_aspect_ratio_and_geometry`: **PASSED** (0.00s) — Verifies extreme non-facial aspect ratios (< 0.7 or > 1.35) are rejected.
+- `test_biometric_verification_metrics_evaluation`: **PASSED** (0.01s) — Validates genuine vs impostor score distributions (genuine mean 0.9841, impostor mean 0.0418, separation gap 0.9423, FAR 0.0% @ 0.65 threshold).
+- `test_candidate_matches_require_human_verification`: **PASSED** (0.00s) — Verifies all candidate matches carry `is_verified = False` requiring human operator verification.
+
+### 32. ANPR Model Validation Suite (`tests/unit/test_anpr_model_validation.py`)
+- `test_plate_ocr_cnn_inference`: **PASSED** (0.01s) — Tests learned character recognition CNN outputting 36-class softmax probabilities.
+- `test_normal_day_condition_recognition`: **PASSED** (0.01s) — Evaluates clean daytime license plate recognition and format validation.
+- `test_night_low_illumination_condition`: **PASSED** (0.01s) — Tests low-light nighttime plate condition with adaptive thresholding.
+- `test_motion_blur_condition`: **PASSED** (0.01s) — Tests horizontal motion blur characteristic of fast-moving vehicles.
+- `test_low_resolution_condition`: **PASSED** (0.01s) — Tests plate degradation under distant camera surveillance (downsampled then upscaled).
+- `test_perspective_distortion_and_deskewing`: **PASSED** (0.01s) — Tests rotated/tilted plate perspective deskewing.
+- `test_multi_line_square_plate_ordering`: **PASSED** (0.01s) — Validates two-tier / square plate row clustering (top-tier first, then bottom-tier).
+- `test_positional_confusion_disambiguation`: **PASSED** (0.00s) — Verifies letter/digit substitution under Indian regional syntax rules.
+- `test_multi_format_validation`: **PASSED** (0.01s) — Validates format compliance for India, US, EU, and Generic patterns.
+
+### 33. Biometric Retention & RBAC Suite (`tests/integration/test_biometric_retention_and_rbac.py`)
+- `test_rbac_access_control_denials_and_grants`: **PASSED** (0.02s) — Verifies RBAC permissions: VIEWER cannot enroll/rotate/purge; SECURITY_OPERATOR can enroll; ADMIN has full access.
+- `test_key_rotation_service_workflow`: **PASSED** (0.03s) — Tests end-to-end master key rotation across stored templates in the database and audit trail creation.
+- `test_retention_policy_enforcement`: **PASSED** (0.02s) — Verifies expiration deactivation, old match event deletion, and snapshot unlinking.
+
+### 34. Real-World Camera Resilience Suite (`tests/integration/test_real_world_camera_resilience.py`)
+- `test_multi_manufacturer_frame_simulation`: **PASSED** (0.02s) — Simulates video feeds for Hikvision, Dahua, CP PLUS, and ONVIF streams.
+- `test_lighting_transition_day_to_night`: **PASSED** (0.01s) — Tests seamless handling of sudden illumination drops without exceptions.
+- `test_camera_disconnect_and_reconnect_simulation`: **PASSED** (0.01s) — Simulates intermittent RTSP stream drops and reconnection recovery.
+- `test_corrupt_and_degraded_frame_resilience`: **PASSED** (0.00s) — Tests anomalous frame dimensions and corrupt pixel buffers.
+- `test_recording_continuity_during_ai_events`: **PASSED** (0.00s) — Verifies continuous background recording is uninterrupted during high-priority AI event recording.
+
+### 35. Biometrics Scale Benchmarks Suite (`tests/performance/test_biometrics_scale_benchmarks.py`)
+- `test_sustained_channel_throughput[1]`: **PASSED** (0.01s) — 1 channel sustained throughput: 8.20 ms/channel.
+- `test_sustained_channel_throughput[4]`: **PASSED** (0.03s) — 4 channels sustained throughput: 7.95 ms/channel.
+- `test_sustained_channel_throughput[9]`: **PASSED** (0.07s) — 9 channels sustained throughput: 8.28 ms/channel.
+- `test_sustained_channel_throughput[16]`: **PASSED** (0.14s) — 16 channels sustained throughput: 8.51 ms/channel (64 AI ops/sec in 136.2 ms burst).
+- `test_memory_stability_under_sustained_workload`: **PASSED** (0.78s) — Validates memory stability over 100 sustained iterations (delta < 2.5 MB, budget < 40 MB).

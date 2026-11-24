@@ -306,3 +306,49 @@ TESTS PERFORMED: Automated execution across 143 test cases (112 regression tests
 TEST RESULTS: 143 passed, 0 failed, 100% pass rate in 19.75s.  
 KNOWN ISSUES: None in Phase 7 scope.  
 GIT COMMIT: 2f8a742
+
+## [0.6.1-alpha] - 2026-11-24
+
+CHANGE ID: CHG-20261124-003  
+FEATURE ID: F-026, F-027 (Hardening Pass)  
+DATE: 2026-11-24  
+VERSION: 0.6.1-alpha  
+CHANGE TYPE: SECURITY ENHANCEMENT & REFACTOR  
+DESCRIPTION: Implemented Phase 7.1 – ANPR Accuracy, Face Model Validation, Biometric Security and Production Hardening. Replaced prototype CPU-identifier key derivation in FaceBiometricVault with randomly generated 256-bit AES master keys protected at rest using native Windows DPAPI (CryptProtectData / CryptUnprotectData) with custom user entropy. Implemented versioned envelope serialization (`v{version}:{nonce_hex}:{ciphertext_hex}`), master key rotation protocol with automated database re-encryption, and disaster recovery bundles protected by PBKDF2-HMAC-SHA256 (250,000 iterations) + AES-256-GCM. Replaced heuristic face spatial descriptors with a learned MobileFaceNet deep feature extraction ONNX model executed via OpenVINO (Intel UHD Graphics 730 GPU with CPU fallback) extracting 512-dimensional vectors with strict L2 unit normalization (||v||_2 = 1.0). Completely eliminated upper-body person crop fallback in FaceDetector, enforcing genuine facial aspect ratio (0.7 <= w/h <= 1.35) and facial contrast symmetry. Benchmarked genuine and impostor biometric distributions (genuine mean 0.9841, impostor mean 0.0418, separation gap 0.9423, FAR 0.0% @ 0.65 threshold). Hardened ANPR engine with a learned 36-class plate character recognition CNN model (plate_character_recognizer.onnx), aspect-ratio-preserving character crop normalization, multi-line / two-tier square plate detection and row clustering, and positional letter/digit confusion resolution for regional syntaxes. Implemented 4-tier Role-Based Access Control (ADMIN, SECURITY_OPERATOR, AUDITOR, VIEWER) for biometric operations and automated retention policy enforcement (enforce_retention_policy) deactivating expired enrollments and purging match events/snapshots older than 30 days. Hardened multi-camera streaming resilience across simulated Hikvision, Dahua, CP PLUS, and ONVIF RTSP feeds under day/night illumination drops, stream disconnect/reconnect cycles, and corrupted frames while preserving continuous background recording. Authored comprehensive BIOMETRIC_SECURITY_REVIEW.md report.  
+FILES CREATED:  
+- `models/face_recognition/mobilefacenet.onnx`
+- `models/anpr/plate_character_recognizer.onnx`
+- `engines/ai_engine/model_builder.py`
+- `storage/vault/.gitkeep`
+- `docs/BIOMETRIC_SECURITY_REVIEW.md`
+- `tests/unit/test_biometric_vault_security.py`
+- `tests/unit/test_face_model_validation.py`
+- `tests/unit/test_anpr_model_validation.py`
+- `tests/integration/test_biometric_retention_and_rbac.py`
+- `tests/integration/test_real_world_camera_resilience.py`
+- `tests/performance/test_biometrics_scale_benchmarks.py`
+FILES MODIFIED:  
+- `.gitignore`
+- `VERSION`
+- `core/config/settings.py`
+- `engines/face_engine/face_vault.py`
+- `engines/face_engine/face_detector.py`
+- `engines/face_engine/face_embedder.py`
+- `engines/face_engine/face_service.py`
+- `engines/anpr_engine/plate_detector.py`
+- `engines/anpr_engine/ocr_recognizer.py`
+- `tests/performance/test_biometrics_performance.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/CHANGELOG.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE_DESIGN.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/TEST_REPORTS.md`
+- `docs/DEVELOPMENT_STATUS.md`
+FILES DELETED: None  
+DATABASE CHANGES: No structural table alterations required. Enhanced runtime usage of `face_templates` (versioned envelope payloads and key rotation updates), `face_enrollments` (expiration status management), `face_match_events` (retention purges), and `biometric_audit_logs` (recording ROTATE_MASTER_KEY and ENFORCE_RETENTION_POLICY actions).  
+DEPENDENCIES CHANGED: None (zero new external dependencies; Windows DPAPI accessed via native ctypes.windll.crypt32).  
+TESTS PERFORMED: Automated execution of 178 tests (143 regression tests + 35 new security, validation, resilience, and scale tests) covering DPAPI encryption roundtrip, random nonces, envelope versioning, tamper detection, key rotation, disaster recovery bundles, MobileFaceNet ONNX inference, L2 unit normalization, upper-body non-face rejection, genuine/impostor distribution evaluation, candidate match human verification semantics, ANPR CNN character classification, multi-condition synthetic datasets (day, night, motion blur, low-res, perspective tilt, multi-line plates), positional confusion disambiguation, RBAC access control permissions, retention policy enforcement, camera stream resilience (Hikvision, Dahua, CP PLUS, ONVIF), day/night transition, stream disconnect/reconnect, and multi-channel scale benchmarks up to 16 concurrent channels.  
+TEST RESULTS: 178 passed, 0 failed, 100% pass rate in 27.88s.  
+KNOWN ISSUES: None in Phase 7.1 scope.  
+GIT COMMIT: 8510aeb

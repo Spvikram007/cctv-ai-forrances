@@ -100,40 +100,67 @@ class FaceDetector:
                     )
                 )
 
-        # 2. Geometric / Anatomical fallback if cascade is unavailable or returned 0 faces
+        # 2. Strict facial geometry verification if cascade is unavailable or returned 0 faces
+        # NEVER treat an upper-body crop as a valid face detection.
         if not detected_faces:
             aspect = float(w) / float(h)
-            if 0.5 <= aspect <= 1.8 and h >= self.min_face_size and w >= self.min_face_size:
-                # Direct face / portrait candidate
-                aligned = cv2.resize(image_bgr, (112, 112), interpolation=cv2.INTER_CUBIC)
-                quality = self.assess_quality(aligned)
-                detected_faces.append(
-                    DetectedFace(
-                        bbox=(0, 0, w, h),
-                        confidence=0.85,
-                        aligned_face=aligned,
-                        quality=quality,
-                    )
-                )
-            elif h > w * 1.3:
-                # Full/half body person crop: extract upper head region (top 35%)
-                head_h = max(self.min_face_size, int(h * 0.35))
-                margin_x = int(w * 0.15)
-                head_w = max(self.min_face_size, w - 2 * margin_x)
-                head_crop = image_bgr[0:head_h, margin_x:margin_x + head_w]
-                if head_crop.size > 0:
-                    aligned = cv2.resize(head_crop, (112, 112), interpolation=cv2.INTER_CUBIC)
+            # Only consider direct close-up portrait / head crops with strict facial aspect ratio
+            if 0.70 <= aspect <= 1.35 and h >= self.min_face_size and w >= self.min_face_size:
+                # Verify genuine facial contrast structure (eye-band vs forehead/cheek luminance)
+                gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+                forehead_band = float(np.mean(gray[0:int(h * 0.25), :]))
+                eye_band = float(np.mean(gray[int(h * 0.25):int(h * 0.50), :]))
+                cheek_band = float(np.mean(gray[int(h * 0.50):int(h * 0.75), :]))
+
+                # Natural faces exhibit darker eye regions compared to forehead or cheek skin
+                is_facial_contrast = (eye_band < forehead_band * 1.15) or (eye_band < cheek_band * 1.15)
+
+                if is_facial_contrast:
+                    aligned = self.align_face(image_bgr)
                     quality = self.assess_quality(aligned)
                     detected_faces.append(
                         DetectedFace(
-                            bbox=(margin_x, 0, head_w, head_h),
-                            confidence=0.80,
+                            bbox=(0, 0, w, h),
+                            confidence=0.85,
                             aligned_face=aligned,
                             quality=quality,
                         )
                     )
 
         return detected_faces
+
+    def align_face(self, face_crop: np.ndarray) -> np.ndarray:
+        """
+        Performs canonical alignment and roll tilt normalization to 112x112 resolution.
+        """
+        if face_crop is None or face_crop.size == 0:
+            return np.zeros((112, 112, 3), dtype=np.uint8)
+
+        h, w = face_crop.shape[:2]
+        gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY) if len(face_crop.shape) == 3 else face_crop
+
+        # Estimate eye roll angle via bilateral upper-quadrant centroids
+        upper = gray[int(h * 0.2):int(h * 0.5), :]
+        left_half = upper[:, :w // 2]
+        right_half = upper[:, w // 2:]
+
+        left_min = np.unravel_index(np.argmin(left_half), left_half.shape)
+        right_min = np.unravel_index(np.argmin(right_half), right_half.shape)
+
+        dx = (w // 2 + right_min[1]) - left_min[1]
+        dy = right_min[0] - left_min[0]
+
+        angle = 0.0
+        if dx > 0:
+            angle = float(np.degrees(np.arctan2(dy, dx)))
+            # Constrain rotation to plausible roll tilt range [-25 deg, 25 deg]
+            angle = max(-25.0, min(25.0, angle))
+
+        center = (w // 2, h // 2)
+        rot_mat = cv2.getRotationMatrix2D(center, angle, 1.0)
+        rotated = cv2.warpAffine(face_crop, rot_mat, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+
+        return cv2.resize(rotated, (112, 112), interpolation=cv2.INTER_CUBIC)
 
     def assess_quality(self, aligned_face_112: np.ndarray) -> FaceQuality:
         """

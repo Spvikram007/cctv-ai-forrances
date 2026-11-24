@@ -103,6 +103,8 @@ models/**/*.engine
 !models/**/.gitkeep
 
 # Sensitive Credentials & Certificates
+storage/vault/*
+!storage/vault/.gitkeep
 *.pem
 *.key
 *.crt
