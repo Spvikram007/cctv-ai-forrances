@@ -35,9 +35,11 @@
 - **Status**: PLANNED (Phase 7)
 - **Role**: Vehicle classification, directional tracking, license plate localization and OCR.
 
-## Module 7: Behaviour Analytics (`engines/event_engine`)
-- **Status**: PLANNED (Phase 8)
-- **Role**: Virtual perimeter monitoring, intrusion zones, line-crossing alarms, loitering detection, crowd density calculation.
+## Module 7: Video Analytics & Intelligent Surveillance Rules (`engines/analytics_engine`, `modules/ai_intelligence`)
+- **Status**: COMPLETE (Phase 6)
+- **Role**: Intelligent surveillance rule evaluation, virtual perimeters, directional line crossing, dwell time loitering, people/vehicle counting, and movement heatmaps.
+- **Components**: `CameraAnalyticsPipeline`, `AnalyticsManager`, `IntrusionDetector`, `TripwireDetector`, `LoiteringDetector`, `CountingManager`, `HeatmapGenerator`, `InteractiveAnalyticsCanvas`, `AnalyticsRulesWidget`.
+- **Features**: Normalized [0, 1] ray-casting point-in-polygon intrusion containment, 2D cross-product line crossing with A->B / B->A directional analysis and zero double-crossing guarantee, loitering state machine with 2.0s occlusion grace period tolerance, real-time occupancy and directional class counting, 2D density movement heatmaps with OpenCV Jet color contour rendering and privacy retention pruning, on-video polygon/tripwire drawing canvas, rule scheduling, and full database audit logging.
 
 ## Module 8: Smart Investigation (`modules/investigation`)
 - **Status**: PLANNED (Phase 6)

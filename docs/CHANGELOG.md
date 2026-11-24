@@ -205,3 +205,49 @@ TESTS PERFORMED: Automated test execution across 90 test cases spanning OpenVINO
 TEST RESULTS: 90 passed, 0 failed, 100% pass rate in 18.55s.  
 KNOWN ISSUES: Physical camera deployment requires operator to drop in desired YOLO weights; default verified ONNX model and OpenVINO IR are operational offline.  
 GIT COMMIT: ccc1e724859327fd92ee401e3c7bfc3e1c64741a
+
+## [0.5.0-alpha] - 2026-11-24
+
+CHANGE ID: CHG-20261124-001  
+FEATURE ID: F-013, F-014, F-015, F-016, F-017  
+DATE: 2026-11-24  
+VERSION: 0.5.0-alpha  
+CHANGE TYPE: NEW FEATURE  
+DESCRIPTION: Implemented Phase 6 – Advanced Video Analytics and Intelligent Surveillance Rules. Developed computational geometry engine for normalized coordinates [0.0, 1.0], point-in-polygon ray casting with boundary handling, segment intersection testing, and directional crossing analysis. Implemented Intrusion Detection (F-013) with multi-zone polygon containment, entry/exit transition events, class filtering, and deduplication suppression. Implemented Tripwire Line Crossing (F-014) with directional analysis (A-to-B, B-to-A, Bidirectional) and per-track crossing cache guaranteeing zero duplicate counts per crossing. Implemented Loitering Detection (F-015) with zone dwell time tracking, temporary occlusion grace period tolerance (2.0s), and exit/re-entry tracking. Implemented People and Vehicle Counting (F-016) with directional entry/exit counters, person vs vehicle classification, real-time occupancy calculations, and hourly/daily summaries. Implemented Movement Heatmaps (F-017) with trajectory point accumulation, 2D density grid matrix, OpenCV Jet color rendering, time-window filtering, and privacy retention pruning. Created InteractiveAnalyticsCanvas and AnalyticsRulesWidget in PySide6 with camera selector, polygon and tripwire drawing tools, rule creation form, rule table, occupancy banner, and heatmap viewer. Integrated analytics into AI inference worker with fault isolation (analytics errors never interrupt continuous recording). Created Alembic migration 57a91c3e80ab adding analytics_zones, tripwire_lines, analytics_rules, analytics_events, object_counts, occupancy_records, and heatmap_data tables.  
+FILES CREATED:  
+- `database/models/analytics.py`
+- `database/migrations/versions/57a91c3e80ab_phase6_video_analytics_and_rules.py`
+- `engines/analytics_engine/__init__.py`
+- `engines/analytics_engine/geometry.py`
+- `engines/analytics_engine/rule_evaluator.py`
+- `engines/analytics_engine/analytics_pipeline.py`
+- `modules/ai_intelligence/analytics_rules_widget.py`
+- `tests/unit/test_analytics_geometry.py`
+- `tests/unit/test_analytics_detectors.py`
+- `tests/integration/test_analytics_pipeline.py`
+- `tests/integration/test_analytics_ui.py`
+- `tests/performance/test_analytics_performance.py`
+FILES MODIFIED:  
+- `VERSION`
+- `core/config/settings.py`
+- `database/models/__init__.py`
+- `engines/ai_engine/inference_worker.py`
+- `app/bootstrap.py`
+- `modules/ai_intelligence/__init__.py`
+- `modules/ai_intelligence/ai_dashboard_widget.py`
+- `tests/performance/test_stream_performance.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/CHANGELOG.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE_DESIGN.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/TEST_REPORTS.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/USER_MANUAL.md`
+FILES DELETED: None  
+DATABASE CHANGES: Applied Alembic revision `57a91c3e80ab`: created `analytics_zones`, `tripwire_lines`, `analytics_rules`, `analytics_events`, `object_counts`, `occupancy_records`, and `heatmap_data` tables with foreign key indexing and SQLite WAL support.  
+DEPENDENCIES CHANGED: None (using existing OpenCV, NumPy, PySide6, SQLAlchemy).  
+TESTS PERFORMED: Automated execution across 112 test cases covering computational geometry, intrusion entry/exit, tripwire directional crossing and duplicate prevention, loitering dwell time and occlusion tolerance, directional counting, occupancy calculations, movement heatmap density matrices, multi-camera pipeline isolation, rule scheduling, fault isolation, interactive drawing canvas, rules management UI, and performance benchmarks for 1, 4, 9, and 16 concurrent camera analytics pipelines.  
+TEST RESULTS: 112 passed, 0 failed, 100% pass rate in 18.77s.  
+KNOWN ISSUES: None in Phase 6 scope.  
+GIT COMMIT: 5eb9c01aaed2d03698a827ede8febd58115aff77

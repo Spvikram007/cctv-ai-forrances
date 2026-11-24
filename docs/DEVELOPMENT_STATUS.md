@@ -10,7 +10,7 @@
 | **Phase 3** | **Stream Polish & PTZ Controller** | **PLANNED** | Mainstream/substream auto-switching, active camera PTZ joystick/overlay controls, audio streaming, and preset patrolling. |
 | **Phase 4** | **Recording & Playback Engines** | **COMPLETE** | Continuous/motion/AI segmented recording, pre/post ring buffering, SHA-256 seal, storage volume retention with evidence locking, crash recovery, multi-camera synchronized playback (1/4/9/16), interactive timeline, and forensic MP4 export. |
 | **Phase 5** | **AI Inference Core (OpenVINO)** | **COMPLETE** | OpenVINO Intel UHD 730 GPU acceleration pipeline, CPU AVX2 fallback, YOLO object detection (person, car, bus, truck, motorcycle, bicycle), ByteTrack multi-object tracking, strict per-camera tracking isolation, AI event processor with deduplication, snapshot capture, AI-event-triggered recording, and AI Intelligence dashboard workspace. |
-| **Phase 6** | **Smart Video Investigation** | **PLANNED** | High-speed metadata indexing and parametric search for object classes, clothing attributes, plate numbers, and time windows. |
+| **Phase 6** | **Advanced Video Analytics & Rules**| **COMPLETE** | Polygon intrusion zones (F-013), virtual tripwire line crossing (F-014), loitering dwell time with occlusion tolerance (F-015), people and vehicle counting with real-time occupancy (F-016), movement heatmaps with Jet color contouring (F-017), interactive drawing canvas, rules management UI, and Alembic migration `57a91c3e80ab`. |
 | **Phase 7** | **Biometric Face & ANPR Intelligence** | **PLANNED** | Authorized local face enrollment and verification (512-d embeddings), ANPR plate detection and OCR pipeline. |
 | **Phase 8** | **Advanced Behaviour Analytics** | **PLANNED** | Virtual line-crossing, perimeter intrusion zones, loitering, crowd density, and abandoned object detectors. |
 | **Phase 9** | **Video Enhancement Engine** | **PLANNED** | Low-light brightening, dehazing, sharpening, motion blur reduction, and AI super-resolution (raw footage preserved). |
@@ -25,8 +25,8 @@
 
 ## 2. Current Sprint Focus
 
-- **Completed Tasks**: Phase 0 Foundation (F-001, F-002, F-022), Phase 1 Live View & Discovery UI (F-006), Phase 2 Device Integration & RTSP Stream Engine (F-003, F-004, F-005), Phase 4 Surveillance Recording, Storage Retention & Synchronized Playback Engine (F-007, F-008, F-021), and Phase 5 AI Inference Core, Detection & ByteTrack Tracking (F-009, F-010, F-011, F-012).
-- **Next Task**: Phase 3 PTZ Controller & Audio or Phase 6 Smart Video Investigation.
+- **Completed Tasks**: Phase 0 Foundation (F-001, F-002, F-022), Phase 1 Live View & Discovery UI (F-006), Phase 2 Device Integration & RTSP Stream Engine (F-003, F-004, F-005), Phase 4 Surveillance Recording, Storage Retention & Synchronized Playback Engine (F-007, F-008, F-021), Phase 5 AI Inference Core, Detection & ByteTrack Tracking (F-009, F-010, F-011, F-012), and Phase 6 Advanced Video Analytics & Rules (F-013, F-014, F-015, F-016, F-017).
+- **Next Task**: Phase 7 Biometric Face & ANPR Intelligence or Phase 3 PTZ Controller & Audio.
 
 ---
 

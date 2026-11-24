@@ -104,6 +104,13 @@ def bootstrap_application() -> Dict[str, Any]:
     logger.info("AI Engines: OpenVINO=%s (Active: %s), ONNX=%s",
                 openvino_ready, openvino_engine.active_device, onnx_ready)
 
+    # 7. Video Analytics Engine Initialization
+    from engines.analytics_engine.analytics_pipeline import analytics_manager
+    from engines.recording_engine.recording_manager import recording_manager
+    analytics_manager.set_recording_manager(recording_manager)
+    analytics_manager.load_from_db()
+    logger.info("Video Analytics Engine initialized with %d camera pipelines.", len(analytics_manager._pipelines))
+
     return {
         "status": "READY",
         "app_name": settings.app_name,
@@ -112,6 +119,7 @@ def bootstrap_application() -> Dict[str, Any]:
         "openvino_devices": report.openvino.available_devices,
         "openvino_ready": openvino_ready,
         "active_ai_device": openvino_engine.active_device,
+        "analytics_ready": True,
         "db_health": db_health,
         "recovered_recordings": recovered_count,
     }

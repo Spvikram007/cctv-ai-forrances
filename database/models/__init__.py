@@ -28,6 +28,15 @@ from database.models.recordings import (
     ExportJob,
 )
 from database.models.ai import AIModel, AIModelVersion, AIJob, Detection, ObjectTrack, AIEvent
+from database.models.analytics import (
+    AnalyticsZone,
+    TripwireLine,
+    AnalyticsRule,
+    AnalyticsEvent,
+    ObjectCount,
+    OccupancyRecord,
+    HeatmapData,
+)
 
 __all__ = [
     "Base",
@@ -62,4 +71,11 @@ __all__ = [
     "Detection",
     "ObjectTrack",
     "AIEvent",
+    "AnalyticsZone",
+    "TripwireLine",
+    "AnalyticsRule",
+    "AnalyticsEvent",
+    "ObjectCount",
+    "OccupancyRecord",
+    "HeatmapData",
 ]

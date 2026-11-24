@@ -10,11 +10,12 @@ from datetime import datetime, timezone
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox,
-    QGridLayout, QProgressBar
+    QGridLayout, QProgressBar, QTabWidget
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 
+from modules.ai_intelligence.analytics_rules_widget import AnalyticsRulesWidget
 from core.logging.logger import get_logger
 
 logger = get_logger("ai_dashboard")
@@ -58,8 +59,20 @@ class AIDashboardWidget(QWidget):
         self._start_refresh_timer()
 
     def _init_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(16, 16, 16, 16)
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(16, 16, 16, 16)
+        root_layout.setSpacing(12)
+
+        self.main_tabs = QTabWidget(self)
+        self.main_tabs.setStyleSheet("""
+            QTabBar::tab { background: #161b22; color: #8b949e; padding: 8px 18px; border: 1px solid #30363d; font-weight: 600; }
+            QTabBar::tab:selected { background: #21262d; color: #58a6ff; }
+        """)
+
+        # Tab 0: Inference & Hardware Telemetry
+        telemetry_widget = QWidget()
+        main_layout = QVBoxLayout(telemetry_widget)
+        main_layout.setContentsMargins(0, 8, 0, 0)
         main_layout.setSpacing(12)
 
         # Header
@@ -168,6 +181,14 @@ class AIDashboardWidget(QWidget):
         events_layout.addWidget(self.events_table)
 
         main_layout.addWidget(events_group, stretch=1)
+
+        self.main_tabs.addTab(telemetry_widget, "Inference & Telemetry")
+
+        # Tab 1: Video Analytics & Surveillance Rules
+        self.rules_widget = AnalyticsRulesWidget()
+        self.main_tabs.addTab(self.rules_widget, "Surveillance Rules & Analytics")
+
+        root_layout.addWidget(self.main_tabs)
 
     def _start_refresh_timer(self):
         self._refresh_timer = QTimer(self)

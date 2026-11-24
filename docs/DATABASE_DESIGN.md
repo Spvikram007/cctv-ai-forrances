@@ -65,6 +65,15 @@ Ensures maximum read throughput and ACID transactional integrity during continuo
 - **`object_tracks` Table Updated**: Decoupled `channel_id` to `VARCHAR(64)` without device FK constraint. Indexed on `channel_id`, `track_id`, `start_time`.
 - **`ai_events` Table Updated**: Decoupled `channel_id` to `VARCHAR(64)` without device FK constraint. Indexed on `channel_id`, `event_type`, `severity`, `timestamp`.
 
+### 2.8 Phase 6 Video Analytics & Intelligent Surveillance Rules Extensions
+- **`analytics_zones` Table Added**: Polygon definitions (`channel_id`, `name`, `zone_type`, `polygon_json`, `color_hex`, `is_active`). Indexed on `channel_id`, `zone_type`, `is_deleted`.
+- **`tripwire_lines` Table Added**: Virtual lines (`channel_id`, `name`, `line_coords_json`, `direction`, `color_hex`, `is_active`). Indexed on `channel_id`, `is_deleted`.
+- **`analytics_rules` Table Added**: Surveillance rules (`channel_id`, `name`, `rule_type`, `zone_id`, `tripwire_id`, `target_classes_json`, `confidence_threshold`, `min_dwell_time_sec`, `severity`, `schedule_json`, `trigger_recording`, `alarm_sound`, `is_active`). Indexed on `channel_id`, `rule_type`, `zone_id`, `tripwire_id`.
+- **`analytics_events` Table Added**: Fired analytics events (`channel_id`, `rule_id`, `rule_name`, `rule_type`, `severity`, `track_id`, `class_name`, `confidence`, `dwell_time_sec`, `crossing_direction`, `details_json`, `snapshot_path`, `timestamp`, `is_acknowledged`). Indexed on `channel_id`, `rule_type`, `severity`, `timestamp`, `track_id`.
+- **`object_counts` Table Added**: Directional counting logs (`channel_id`, `rule_id`, `line_or_zone_id`, `class_name`, `direction`, `count_delta`, `track_id`, `timestamp`). Indexed on `channel_id`, `timestamp`, `track_id`, `class_name`.
+- **`occupancy_records` Table Added**: Real-time occupancy snapshots (`channel_id`, `zone_id`, `zone_name`, `current_occupancy`, `person_count`, `vehicle_count`, `max_capacity`, `is_over_capacity`, `timestamp`). Indexed on `channel_id`, `zone_id`, `timestamp`.
+- **`heatmap_data` Table Added**: Serialized 2D movement density grids (`channel_id`, `time_window_start`, `time_window_end`, `grid_width`, `grid_height`, `density_matrix_json`, `total_points`). Indexed on `channel_id`, `time_window_start`, `time_window_end`.
+
 ## 4. Migration History (Alembic)
 - **`26108d74df4c`** (2026-11-22): `phase1_phase2_devices_and_streams`
   - Created tables: `device_credentials`, `device_discovery_records`, `nvr_channel_mappings`, `stream_health_logs`.
@@ -77,3 +86,6 @@ Ensures maximum read throughput and ACID transactional integrity during continuo
   - Added columns to `ai_jobs`: `execution_device`, `actual_fps`.
   - Decoupled `channel_id` from strict `device_channels.id` foreign key on `ai_jobs`, `detections`, `object_tracks`, `ai_events` to support logical channel tracking.
   - Added indexes on `channel_id`, `timestamp`, `class_name`, `track_id`, `event_type`, `severity`.
+- **`57a91c3e80ab`** (2026-11-24): `phase6_video_analytics_and_rules`
+  - Created tables: `analytics_zones`, `tripwire_lines`, `analytics_rules`, `analytics_events`, `object_counts`, `occupancy_records`, `heatmap_data`.
+  - Added indexes on `channel_id`, `zone_type`, `rule_type`, `track_id`, `timestamp`, `is_deleted`.

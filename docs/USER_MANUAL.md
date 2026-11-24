@@ -155,3 +155,51 @@ In the **Live View** workspace, use the layout toolbar buttons to dynamically sw
 ### 6.6 Snapshot Storage & Event Deduplication
 - High-severity detection snapshots are automatically stored under `storage/snapshots/{channel_id}/{YYYYMMDD}/`.
 - Event deduplication prevents repetitive alarm flooding by suppressing duplicate triggers for the same object within 5 seconds.
+
+---
+
+## 7. Intelligent Video Analytics & Surveillance Rules Configuration
+
+### 7.1 Accessing the Rules Configuration Interface
+1. Navigate to **AI Intelligence** in the left sidebar.
+2. Click the second tab: **Surveillance Rules & Analytics**.
+3. Select the desired camera channel from the **Camera** dropdown (e.g. `CAM_01`).
+
+### 7.2 Drawing Polygon Surveillance Zones (F-013 & F-015)
+1. Click **+ Draw Polygon Zone** on the canvas toolbar.
+2. Click sequentially on the live video canvas to place polygon vertices.
+3. Double-click to complete and close the polygon.
+4. The system assigns a unique zone identifier (e.g. `Zone 1`) and persists the normalized coordinate geometry into the database.
+5. Zones are color-rendered with semi-transparent shading and labeled headers.
+
+### 7.3 Drawing Virtual Tripwire Lines (F-014 & F-016)
+1. Click **+ Draw Tripwire Line** on the toolbar.
+2. Click Point A (line origin) and Point B (line termination) across a doorway, roadway, or perimeter boundary.
+3. The system draws a high-visibility green line with directional markers indicating left-hand ($A$) and right-hand ($B$) sides.
+4. Virtual lines are immediately registered and ready for rule assignment.
+
+### 7.4 Creating Analytics Rules
+In the **Create Surveillance Rule** panel:
+- **Rule Name**: Enter a descriptive identifier (e.g., `Main Gate Intrusion`, `Lobby Loitering`).
+- **Rule Type**: Select from:
+  - `INTRUSION`: Triggers when an object's ground contact point enters the defined polygon.
+  - `LINE_CROSSING`: Triggers when an object crosses a virtual tripwire line in the configured direction ($A \to B$, $B \to A$, or bidirectional).
+  - `LOITERING`: Triggers when an object dwells inside a zone longer than the configured dwell threshold.
+  - `COUNTING`: Directional tally of persons and vehicles crossing lines or entering zones.
+- **Bound Zone / Line**: Select the target zone or tripwire line drawn on the canvas.
+- **Target Classes**: Check `Person` and/or `Vehicles` (cars, trucks, buses, motorcycles, bicycles).
+- **Min Confidence**: Set detection sensitivity (0.10 to 1.00; default 0.50).
+- **Dwell Time**: For loitering rules, set minimum dwell duration in seconds (default 5.0s).
+- **Severity & Actions**: Choose severity (`INFO`, `WARNING`, `CRITICAL`) and whether to trigger automatic recording.
+- Click **Save Rule**.
+
+### 7.5 People & Vehicle Counting & Occupancy Bar (F-016)
+- **Live Occupancy**: Displays instantaneous count of entities currently inside the facility or zone ($\max(0, \text{Entered} - \text{Exited})$).
+- **Directional Breakdowns**: Displays real-time counts for Persons and Vehicles.
+- **Counter Reset**: Click **Reset Counters** to zero counters with full cryptographic audit logging.
+
+### 7.6 Movement Heatmap Analytics (F-017)
+1. Switch to the **Movement Heatmap** tab in the right pane.
+2. Select your desired time window: `Last 15 Minutes`, `Last 1 Hour`, `Last 24 Hours`, or `All Available`.
+3. Click **Generate Heatmap**: The platform computes a 2D density matrix across recorded track trajectories and displays a Jet thermal contour map.
+4. Click **Export Heatmap Image** to save a high-resolution PNG image with timestamp telemetry for security reports.

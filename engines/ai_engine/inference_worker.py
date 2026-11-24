@@ -152,6 +152,14 @@ class AIInferenceWorker(threading.Thread):
                     "latency_ms": round(latency_ms, 2),
                 }, source="ai_worker")
 
+                # Evaluate Video Analytics Rules (Intrusion, Tripwires, Loitering, Counting, Heatmap)
+                try:
+                    from engines.analytics_engine.analytics_pipeline import analytics_manager
+                    pipeline = analytics_manager.get_pipeline(self.channel_id)
+                    pipeline.process(tracked, packet.frame, packet.timestamp)
+                except Exception as ana_err:
+                    logger.debug("Analytics evaluation error on [%s]: %s", self.channel_id, ana_err)
+
                 if self.result_callback:
                     try:
                         self.result_callback(result)
