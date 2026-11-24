@@ -251,3 +251,58 @@ TESTS PERFORMED: Automated execution across 112 test cases covering computationa
 TEST RESULTS: 112 passed, 0 failed, 100% pass rate in 18.77s.  
 KNOWN ISSUES: None in Phase 6 scope.  
 GIT COMMIT: 5eb9c01aaed2d03698a827ede8febd58115aff77
+
+## [0.6.0-alpha] - 2026-11-24
+
+CHANGE ID: CHG-20261124-002  
+FEATURE ID: F-026, F-027  
+DATE: 2026-11-24  
+VERSION: 0.6.0-alpha  
+CHANGE TYPE: NEW FEATURE  
+DESCRIPTION: Implemented Phase 7 – Authorized Face Intelligence and Automatic Number Plate Recognition (ANPR). Implemented dedicated local offline ANPR engine featuring license plate localization using Sobel vertical edge extraction, morphological rectangular fusion, and Otsu binarization; perspective correction and deskewing; CLAHE contrast enhancement; character contour segmentation; 28x28 template feature matching with character-level and overall plate confidence scoring; positional character confusion resolution (e.g., O/0, I/1, B/8, Z/2); and regional format validation (India, US, EU, Generic). Integrated persistent vehicle track plate association in ANPRPipeline, caching recognized plates for 10.0 seconds to bypass redundant OCR operations per vehicle track. Implemented snapshot capture, watchlist hotlist matching, and recording triggers for watchlist alerts. Developed ANPRSearchEngine supporting parametric wildcard searches (*, ?), camera, vehicle class, and confidence filtering, with CSV intelligence report export. Implemented Authorized Face Intelligence Service strictly restricted to authorized enrolled identities (zero automatic identification of arbitrary persons; mathematical similarity scores treated strictly as candidate matches requiring human verification). Designed FaceBiometricVault using local hardware-bound AES-256-GCM encryption with unique 96-bit nonces, ensuring biometric feature vectors are never exposed in plaintext in database or logs. Implemented FaceDetector with canonical 112x112 facial alignment, anatomical person-crop fallback, and FaceQuality assessment (Laplacian blur variance and illumination mean checks). Implemented FaceEmbedder extracting L2-normalized 512-dimensional feature vectors and calculating cosine similarity. Implemented human operator verification workflow (verify_match_event) and complete audit logging via BiometricAuditLog for enrollment, revocation, match queries, and verification. Developed PySide6 ANPRWorkspaceWidget (mounted at stacked view 4 'Investigation' and AI dashboard sub-tab) and FaceWorkspaceWidget (candidate match review, authorized enrollment, catalog, and audit trail). Applied Alembic migration 62f4c08e921d creating 8 tables: face_identities, face_templates, face_enrollments, face_match_events, anpr_detections, anpr_plate_records, vehicle_events, and biometric_audit_logs.  
+FILES CREATED:  
+- `database/models/biometrics.py`
+- `database/migrations/versions/62f4c08e921d_phase7_face_and_anpr.py`
+- `engines/anpr_engine/__init__.py`
+- `engines/anpr_engine/plate_detector.py`
+- `engines/anpr_engine/ocr_recognizer.py`
+- `engines/anpr_engine/anpr_pipeline.py`
+- `engines/anpr_engine/anpr_search.py`
+- `engines/face_engine/__init__.py`
+- `engines/face_engine/face_detector.py`
+- `engines/face_engine/face_embedder.py`
+- `engines/face_engine/face_vault.py`
+- `engines/face_engine/face_service.py`
+- `modules/anpr_intelligence/__init__.py`
+- `modules/anpr_intelligence/anpr_workspace_widget.py`
+- `modules/face_intelligence/__init__.py`
+- `modules/face_intelligence/face_workspace_widget.py`
+- `tests/unit/test_anpr_engine.py`
+- `tests/unit/test_face_engine.py`
+- `tests/integration/test_anpr_and_face_pipeline.py`
+- `tests/integration/test_biometrics_ui.py`
+- `tests/performance/test_biometrics_performance.py`
+FILES MODIFIED:  
+- `VERSION`
+- `core/config/settings.py`
+- `core/events/event_bus.py`
+- `database/models/__init__.py`
+- `engines/ai_engine/inference_worker.py`
+- `app/bootstrap.py`
+- `app/main.py`
+- `modules/ai_intelligence/ai_dashboard_widget.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/CHANGELOG.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE_DESIGN.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/TEST_REPORTS.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/USER_MANUAL.md`
+FILES DELETED: None  
+DATABASE CHANGES: Applied Alembic revision `62f4c08e921d`: created `face_identities`, `face_templates`, `face_enrollments`, `face_match_events`, `anpr_detections`, `anpr_plate_records`, `vehicle_events`, and `biometric_audit_logs` tables with composite indexing and foreign key relationships.  
+DEPENDENCIES CHANGED: None (using existing OpenCV, NumPy, PySide6, SQLAlchemy, cryptography).  
+TESTS PERFORMED: Automated execution across 143 test cases (112 regression tests + 31 new Phase 7 tests) covering plate detection and aspect filtering, OCR character recognition, confusion correction, regional format validation, track association caching and duplicate suppression, wildcard search and CSV export, face detection, canonical 112x112 alignment, biometric quality scoring (sharpness Laplacian variance, illumination mean), 512-d L2-normalized embedding extraction, AES-256-GCM vault encryption/decryption and tamper detection, authorized enrollment, identity revocation, candidate matching, human verification workflows, audit trail persistence, fault isolation (stream and recording continuity during ANPR/face failure), Qt UI workspace loading and event handling, and multi-channel performance benchmarks across 1, 4, 9, and 16 concurrent streams.  
+TEST RESULTS: 143 passed, 0 failed, 100% pass rate in 19.75s.  
+KNOWN ISSUES: None in Phase 7 scope.  
+GIT COMMIT: 2f8a742

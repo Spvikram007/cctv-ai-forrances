@@ -70,7 +70,11 @@ class EventBus:
             try:
                 handler(event)
             except Exception as e:
-                logger.error("Error executing event handler %s for topic '%s': %s", handler, topic, e, exc_info=True)
+                try:
+                    handler_name = getattr(handler, "__name__", "handler")
+                    logger.error("Error executing event handler %s for topic '%s': %s", handler_name, topic, e)
+                except Exception:
+                    pass
 
 
 # Global event bus singleton

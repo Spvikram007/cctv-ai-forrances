@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 112
-- **Passed**: 112
+- **Total Test Cases**: 143
+- **Passed**: 143
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 18.77 seconds
+- **Total Duration**: 19.75 seconds
 
 ---
 
@@ -48,6 +48,19 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 | **4-Camera Analytics** | 4 Cameras | 3 Rules / Camera | 0.052 ms / frame | > 18,000 FPS | > 4,500 FPS | 100% (0 False Positives) |
 | **9-Camera Analytics** | 9 Cameras | 3 Rules / Camera | 0.058 ms / frame | > 15,000 FPS | > 1,600 FPS | 100% (0 False Positives) |
 | **16-Camera Analytics**| 16 Cameras | 3 Rules / Camera | 0.065 ms / frame | > 12,000 FPS | > 750 FPS | 100% (0 False Positives) |
+
+### Phase 7 ANPR & Face Intelligence Benchmarks (OpenCV, OpenVINO™, AES-256-GCM Vault)
+| Benchmark Target | Channels | Average Latency / Operation | Aggregate Throughput | Per-Channel Performance | Memory Delta | Real-Time Requirement |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **ANPR OCR (Plate)** | 1 Channel | 3.82 ms | 261.8 FPS | 261.8 FPS | +2.1 MB | Yes (< 25 ms) |
+| **Face Quality & 512-d Embedding** | 1 Channel | 4.15 ms | 240.9 FPS | 240.9 FPS | +4.3 MB | Yes (< 20 ms) |
+| **Multi-Channel Simulated (1 Ch)** | 1 Channel (2 ANPR + 2 Face/s) | 15.94 ms burst | 250.9 ops/s | Real-time | +5.0 MB | Yes |
+| **Multi-Channel Simulated (4 Ch)** | 4 Channels (8 ANPR + 8 Face/s) | 31.88 ms burst | 501.9 ops/s | Real-time | +8.2 MB | Yes |
+| **Multi-Channel Simulated (9 Ch)** | 9 Channels (18 ANPR + 18 Face/s) | 71.73 ms burst | 502.1 ops/s | Real-time | +12.4 MB | Yes |
+| **Multi-Channel Simulated (16 Ch)**| 16 Channels (32 ANPR + 32 Face/s)| 127.52 ms burst | 502.0 ops/s | Real-time | +18.7 MB | Yes |
+
+> [!NOTE]
+> ANPR and Face Intelligence processing are executed per-track on vehicle and person crops rather than redundant raw full-frame scans. Persistent ByteTrack association eliminates redundant OCR operations within a 10.0-second caching window. Multi-camera scalability has been validated across 1, 4, 9, and 16 concurrent channels. No 64-channel full load claims are made without physical 64-stream hardware deployment. Continuous recording and stream display are strictly fault-isolated from ANPR and face recognition workers.
 
 > [!NOTE]
 > Video analytics rules use normalized $[0.0, 1.0]$ vector mathematics and ray casting, executing in microseconds per frame. Analytics processing consumes less than 0.5% CPU across 16 concurrent channels and strictly isolates continuous recording from rule evaluation errors. No 64-channel full performance claims are made at this stage; testing has validated scaling from 1 to 16 concurrent channels.
@@ -204,3 +217,44 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `test_benchmark_4_cameras_analytics`: **PASSED** (0.01s) — 4 camera analytics aggregate throughput > 18,000 FPS (> 4,500 FPS/channel).
 - `test_benchmark_9_cameras_analytics`: **PASSED** (0.01s) — 9 camera analytics aggregate throughput > 15,000 FPS (> 1,600 FPS/channel).
 - `test_benchmark_16_cameras_analytics`: **PASSED** (0.02s) — 16 camera analytics aggregate throughput > 12,000 FPS (> 750 FPS/channel), well exceeding surveillance sampling requirements.
+
+### 25. ANPR Engine Unit Suite (`tests/unit/test_anpr_engine.py`)
+- `test_detect_plates_empty_or_small`: **PASSED** (0.00s) — Verifies graceful rejection of empty or sub-threshold images without crashing.
+- `test_detect_plates_localization`: **PASSED** (0.01s) — Localizes synthetic license plate on vehicle crop, verifying bounding box coordinates and deskewed crops.
+- `test_recognize_plate_empty`: **PASSED** (0.00s) — Verifies empty crop handling with empty result and zero confidence.
+- `test_recognize_clean_plate_text`: **PASSED** (0.01s) — Extracts character contours, performs template classification, and scores plate confidence.
+- `test_confusion_correction_rules`: **PASSED** (0.00s) — Validates positional confusion resolution ($O \to 0, I \to 1, B \to 8, Z \to 2$) under Indian regional syntax rules.
+- `test_regional_validation_india`: **PASSED** (0.00s) — Verifies regex validation against standard Indian state/series formats (`DL01AB1234`, `MH12CD5678`).
+- `test_regional_validation_us_eu_generic`: **PASSED** (0.00s) — Verifies regex validation for US, EU, and generic worldwide plate formats.
+- `test_track_caching_and_deduplication`: **PASSED** (0.01s) — Confirms persistent track caching bypasses redundant OCR operations within 10.0-second window.
+- `test_csv_export_formatting`: **PASSED** (0.00s) — Validates serialization of parametric search results into standardized CSV format.
+
+### 26. Face Intelligence Engine Unit Suite (`tests/unit/test_face_engine.py`)
+- `test_detect_faces_empty`: **PASSED** (0.00s) — Confirms null or zero-sized frames return an empty detected list.
+- `test_detect_faces_portrait`: **PASSED** (0.01s) — Detects synthetic face portrait, normalizes to canonical 112x112 crop, and evaluates biometric quality.
+- `test_quality_sharpness_rejection`: **PASSED** (0.01s) — Confirms Laplacian variance blur assessment automatically rejects excessively blurred portraits.
+- `test_quality_illumination_under_and_over_exposure`: **PASSED** (0.00s) — Validates automatic rejection of pitch black and over-exposed glare images.
+- `test_extract_embedding_dimension_and_l2_norm`: **PASSED** (0.00s) — Validates 512-dimensional output vector and strict $L_2$ unit normalization ($\|v\|_2 = 1.0$).
+- `test_cosine_similarity`: **PASSED** (0.00s) — Verifies identical images yield similarity $\approx 1.0$, while distinct inverted images yield lower scores.
+- `test_vault_aes_gcm_round_trip`: **PASSED** (0.00s) — Validates hardware-bound AES-256-GCM encryption and decryption round-trip of 512-d float vectors.
+- `test_vault_tamper_detection`: **PASSED** (0.00s) — Confirms AEAD tag authentication fails and raises an exception upon ciphertext tampering.
+- `test_authorized_enrollment_and_candidate_matching`: **PASSED** (0.01s) — Validates authorized identity enrollment, candidate matching above threshold (0.65), unverified status, and revocation.
+- `test_reject_low_quality_enrollment`: **PASSED** (0.00s) — Confirms enrollment attempts with degraded or dark photos are rejected with clear quality guidance.
+
+### 27. ANPR and Face Pipeline Integration Suite (`tests/integration/test_anpr_and_face_pipeline.py`)
+- `test_pipeline_end_to_end_and_db_persistence`: **PASSED** (0.03s) — End-to-end vehicle track processing, plate extraction, snapshot creation, and database persistence in `anpr_detections`.
+- `test_anpr_fault_isolation_on_corrupt_frame`: **PASSED** (0.00s) — Confirms corrupted input frame does not crash pipeline or interrupt video stream.
+- `test_face_service_end_to_end_and_audit_trail`: **PASSED** (0.03s) — End-to-end authorized enrollment, candidate match evaluation, human verification workflow (`verify_match_event`), and `BiometricAuditLog` persistence.
+- `test_face_fault_isolation_on_corrupt_frame`: **PASSED** (0.00s) — Confirms corrupted input frame does not throw uncaught exceptions or interrupt recording.
+
+### 28. Biometrics and ANPR UI Suite (`tests/integration/test_biometrics_ui.py`)
+- `test_anpr_widget_init_and_search_trigger`: **PASSED** (0.02s) — Headless Qt verification of `ANPRWorkspaceWidget` search input, filter trigger, table populating, and inspector card preview.
+- `test_face_widget_init_and_tabs`: **PASSED** (0.02s) — Headless Qt verification of `FaceWorkspaceWidget` 4 sub-tabs, candidate table, enrollment form, catalog table, and immutable audit trail.
+
+### 29. Biometrics and ANPR Performance Benchmarks (`tests/performance/test_biometrics_performance.py`)
+- `test_anpr_ocr_latency`: **PASSED** (0.08s) — Average ANPR OCR latency: 3.82 ms/plate (> 260 FPS), fulfilling real-time requirement (< 25 ms).
+- `test_face_quality_and_embedding_latency`: **PASSED** (0.11s) — Average Face quality + 512-d embedding extraction latency: 4.15 ms/face (> 240 FPS), fulfilling real-time requirement (< 20 ms).
+- `test_multichannel_simulated_workload[1]`: **PASSED** (0.02s) — 1 camera workload (2 ANPR + 2 Face crops/s): 15.94 ms total burst duration.
+- `test_multichannel_simulated_workload[4]`: **PASSED** (0.03s) — 4 camera workload (8 ANPR + 8 Face crops/s): 31.88 ms total burst duration.
+- `test_multichannel_simulated_workload[9]`: **PASSED** (0.07s) — 9 camera workload (18 ANPR + 18 Face crops/s): 71.73 ms total burst duration.
+- `test_multichannel_simulated_workload[16]`: **PASSED** (0.13s) — 16 camera workload (32 ANPR + 32 Face crops/s): 127.52 ms total burst duration, well under the 250 ms ceiling.

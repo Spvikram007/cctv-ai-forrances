@@ -16,6 +16,8 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 
 from modules.ai_intelligence.analytics_rules_widget import AnalyticsRulesWidget
+from modules.face_intelligence.face_workspace_widget import FaceWorkspaceWidget
+from modules.anpr_intelligence.anpr_workspace_widget import ANPRWorkspaceWidget
 from core.logging.logger import get_logger
 
 logger = get_logger("ai_dashboard")
@@ -187,6 +189,14 @@ class AIDashboardWidget(QWidget):
         # Tab 1: Video Analytics & Surveillance Rules
         self.rules_widget = AnalyticsRulesWidget()
         self.main_tabs.addTab(self.rules_widget, "Surveillance Rules & Analytics")
+
+        # Tab 2: Authorized Face Intelligence
+        self.face_widget = FaceWorkspaceWidget()
+        self.main_tabs.addTab(self.face_widget, "Face Intelligence")
+
+        # Tab 3: Automatic Number Plate Recognition (ANPR)
+        self.anpr_widget = ANPRWorkspaceWidget()
+        self.main_tabs.addTab(self.anpr_widget, "ANPR Intelligence")
 
         root_layout.addWidget(self.main_tabs)
 

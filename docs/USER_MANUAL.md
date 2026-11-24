@@ -203,3 +203,34 @@ In the **Create Surveillance Rule** panel:
 2. Select your desired time window: `Last 15 Minutes`, `Last 1 Hour`, `Last 24 Hours`, or `All Available`.
 3. Click **Generate Heatmap**: The platform computes a 2D density matrix across recorded track trajectories and displays a Jet thermal contour map.
 4. Click **Export Heatmap Image** to save a high-resolution PNG image with timestamp telemetry for security reports.
+
+---
+
+## 8. Automatic Number Plate Recognition (ANPR) & Authorized Face Intelligence
+
+### 8.1 Accessing the ANPR Investigation Workspace
+1. In the left navigation sidebar, click **Investigation** (or navigate to **AI Intelligence** -> **ANPR Intelligence** tab).
+2. The ANPR workspace provides:
+   - **Live Detection Table**: Real-time ticker of license plates recognized across active channels.
+   - **Plate Inspector**: Displays cropped plate image, full vehicle snapshot, optical confidence, vehicle classification, and format validation status.
+   - **Parametric Search Bar**: Filter historical sightings by wildcard plate string (e.g. `MH12*`, `KA01??4567`), camera channel, vehicle class (`car`, `truck`, `bus`, `motorcycle`), and manual review status.
+   - **Export CSV**: Exports filtered intelligence results into standardized CSV reports.
+
+### 8.2 Watchlist Management & Stolen Vehicle Alerts
+- License plates registered on hotlists (e.g. `STOLEN`, `BOLO`, `VIP`, `BANNED`) automatically trigger high-priority `WATCHLIST_ALERT` alarms.
+- The platform automatically initiates event-based recording with pre-event buffering and captures full vehicle and cropped plate snapshots under `storage/snapshots/{channel_id}/anpr/`.
+
+### 8.3 Authorized Face Intelligence Workspace
+1. Navigate to **AI Intelligence** -> **Face Intelligence** tab.
+2. The workspace features 4 dedicated functional sub-tabs:
+   - **Candidate Matches & Review**: Real-time queue of candidate matches against authorized identities.
+     > [!IMPORTANT]
+     > Similarity scores are mathematical correlations, **NOT proof of identity**. All matches require human operator verification.
+     - Review operators click **Verify** to examine the live match snapshot against the enrolled authorized template and record confirmation in the audit trail.
+   - **Authorized Enrollment**:
+     1. Enter legal Full Name, Badge/Employee ID, Category (`AUTHORIZED_STAFF`, `VIP`, `WATCHLIST_ALERT`), Department, and Authorization Policy Reference.
+     2. Click **Select Face Image** to load an authorized employee/personnel photograph.
+     3. The system automatically performs canonical $112 \times 112$ alignment and evaluates `FaceQuality` (illumination mean and Laplacian blur variance). Blurry or low-light images are automatically rejected.
+     4. Click **Submit & Encrypt Biometric Enrollment**: The 512-dimensional biometric feature vector is encrypted via local hardware-bound AES-256-GCM before database storage. Biometric vectors are never stored in plaintext.
+   - **Identity Catalog & Watchlists**: View active authorized enrolled identities, departments, and statuses. Operators can revoke biometric credentials with mandatory reason logging.
+   - **Biometric Audit Trail**: Immutable access log capturing all enrollment, revocation, candidate query, and verification actions with timestamps and operator IDs.

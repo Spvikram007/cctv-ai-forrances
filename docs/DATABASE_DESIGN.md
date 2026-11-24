@@ -74,6 +74,16 @@ Ensures maximum read throughput and ACID transactional integrity during continuo
 - **`occupancy_records` Table Added**: Real-time occupancy snapshots (`channel_id`, `zone_id`, `zone_name`, `current_occupancy`, `person_count`, `vehicle_count`, `max_capacity`, `is_over_capacity`, `timestamp`). Indexed on `channel_id`, `zone_id`, `timestamp`.
 - **`heatmap_data` Table Added**: Serialized 2D movement density grids (`channel_id`, `time_window_start`, `time_window_end`, `grid_width`, `grid_height`, `density_matrix_json`, `total_points`). Indexed on `channel_id`, `time_window_start`, `time_window_end`.
 
+### 2.9 Phase 7 Authorized Face Intelligence & ANPR Schema Extensions
+- **`face_identities` Table Added**: Authorized enrolled identities (`name`, `identity_code`, `category`, `is_active`, `department`, `notes`). Indexed on `name`, `identity_code`, `category`, `is_active`.
+- **`face_templates` Table Added**: Cryptographically sealed biometric feature templates (`identity_id`, `encrypted_template` [AES-256-GCM hex blob], `algorithm`, `vector_dim`, `quality_score`, `is_revoked`, `revoked_at`, `revocation_reason`). Indexed on `identity_id`, `is_revoked`.
+- **`face_enrollments` Table Added**: Legal enrollment consent and compliance records (`identity_id`, `enrolled_by_user_id`, `status`, `authorization_ref`, `valid_until`). Indexed on `identity_id`, `enrolled_by_user_id`, `status`.
+- **`face_match_events` Table Added**: Candidate match correlation events (`channel_id`, `identity_id`, `candidate_name`, `category`, `similarity_score`, `threshold_applied`, `snapshot_path`, `face_bbox_json`, `is_verified` [human confirmation required], `verified_by_user_id`, `verified_at`, `timestamp`). Indexed on `channel_id`, `identity_id`, `candidate_name`, `category`, `is_verified`, `timestamp`.
+- **`anpr_detections` Table Added**: License plate detection records (`channel_id`, `track_id`, `vehicle_class`, `plate_text`, `confidence`, `character_confidences_json`, `plate_format`, `requires_manual_review`, `plate_crop_path`, `vehicle_snapshot_path`, `timestamp`). Indexed on `channel_id`, `track_id`, `vehicle_class`, `plate_text`, `requires_manual_review`, `timestamp`.
+- **`anpr_plate_records` Table Added**: Unique vehicle plate sightings database (`plate_text_normalized`, `vehicle_class`, `first_seen`, `last_seen`, `total_sightings`, `is_watchlist`, `watchlist_category`, `owner_or_notes`). Indexed on `plate_text_normalized`, `first_seen`, `last_seen`, `is_watchlist`.
+- **`vehicle_events` Table Added**: Vehicle event log (`channel_id`, `plate_text`, `event_type`, `severity`, `confidence`, `track_id`, `details_json`, `timestamp`). Indexed on `channel_id`, `plate_text`, `event_type`, `timestamp`.
+- **`biometric_audit_logs` Table Added**: Immutable audit trail for all biometric operations (`user_id`, `action` [ENROLL, REVOKE, VERIFY, QUERY], `identity_id`, `template_id`, `details_json`, `ip_address`, `timestamp`). Indexed on `user_id`, `action`, `identity_id`, `timestamp`.
+
 ## 4. Migration History (Alembic)
 - **`26108d74df4c`** (2026-11-22): `phase1_phase2_devices_and_streams`
   - Created tables: `device_credentials`, `device_discovery_records`, `nvr_channel_mappings`, `stream_health_logs`.
@@ -89,3 +99,6 @@ Ensures maximum read throughput and ACID transactional integrity during continuo
 - **`57a91c3e80ab`** (2026-11-24): `phase6_video_analytics_and_rules`
   - Created tables: `analytics_zones`, `tripwire_lines`, `analytics_rules`, `analytics_events`, `object_counts`, `occupancy_records`, `heatmap_data`.
   - Added indexes on `channel_id`, `zone_type`, `rule_type`, `track_id`, `timestamp`, `is_deleted`.
+- **`62f4c08e921d`** (2026-11-24): `phase7_face_and_anpr`
+  - Created tables: `face_identities`, `face_templates`, `face_enrollments`, `face_match_events`, `anpr_detections`, `anpr_plate_records`, `vehicle_events`, `biometric_audit_logs`.
+  - Added indexes on `identity_code`, `is_active`, `is_revoked`, `plate_text`, `plate_text_normalized`, `is_watchlist`, `action`, `user_id`, `timestamp`.

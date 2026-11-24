@@ -23,6 +23,7 @@ from modules.dashboard.dashboard_widget import DashboardWidget
 from modules.live_monitoring.live_view_widget import LiveViewWidget
 from modules.video_playback.playback_widget import PlaybackWidget
 from modules.ai_intelligence.ai_dashboard_widget import AIDashboardWidget
+from modules.anpr_intelligence.anpr_workspace_widget import ANPRWorkspaceWidget
 from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
 from engines.video_engine.stream_manager import stream_manager
 from engines.video_engine.playback_controller import playback_controller
@@ -129,8 +130,12 @@ class MainWindow(QMainWindow):
         self.ai_dashboard_widget = AIDashboardWidget()
         self.stack.addWidget(self.ai_dashboard_widget)
 
-        # Views 4 to 14: Module Placeholders
-        for idx, (title, desc) in enumerate(self.NAV_ITEMS[4:], start=4):
+        # View 4: Smart Investigation & ANPR Intelligence Workspace
+        self.investigation_widget = ANPRWorkspaceWidget()
+        self.stack.addWidget(self.investigation_widget)
+
+        # Views 5 to 14: Module Placeholders
+        for idx, (title, desc) in enumerate(self.NAV_ITEMS[5:], start=5):
             phase_num = f"Phase {idx}" if idx < 12 else "Phase 12+"
             placeholder = ModulePlaceholderWidget(
                 module_title=f"{title.upper()}",

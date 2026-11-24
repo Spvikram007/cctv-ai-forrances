@@ -111,6 +111,14 @@ def bootstrap_application() -> Dict[str, Any]:
     analytics_manager.load_from_db()
     logger.info("Video Analytics Engine initialized with %d camera pipelines.", len(analytics_manager._pipelines))
 
+    # 8. ANPR & Authorized Face Intelligence Initialization
+    from engines.anpr_engine.anpr_pipeline import anpr_pipeline
+    from engines.face_engine.face_service import face_intelligence_service
+    anpr_pipeline.set_recording_manager(recording_manager)
+    face_intelligence_service.set_recording_manager(recording_manager)
+    loaded_faces = face_intelligence_service.reload_enrolled_templates()
+    logger.info("Face Intelligence: %d authorized identities active; ANPR pipeline ready.", loaded_faces)
+
     return {
         "status": "READY",
         "app_name": settings.app_name,
@@ -120,6 +128,8 @@ def bootstrap_application() -> Dict[str, Any]:
         "openvino_ready": openvino_ready,
         "active_ai_device": openvino_engine.active_device,
         "analytics_ready": True,
+        "anpr_ready": True,
+        "face_intelligence_ready": True,
         "db_health": db_health,
         "recovered_recordings": recovered_count,
     }

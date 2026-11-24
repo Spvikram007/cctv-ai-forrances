@@ -37,6 +37,16 @@ from database.models.analytics import (
     OccupancyRecord,
     HeatmapData,
 )
+from database.models.biometrics import (
+    FaceIdentity,
+    FaceTemplate,
+    FaceEnrollment,
+    FaceMatchEvent,
+    ANPRDetection,
+    ANPRPlateRecord,
+    VehicleEvent,
+    BiometricAuditLog,
+)
 
 __all__ = [
     "Base",
@@ -78,4 +88,12 @@ __all__ = [
     "ObjectCount",
     "OccupancyRecord",
     "HeatmapData",
+    "FaceIdentity",
+    "FaceTemplate",
+    "FaceEnrollment",
+    "FaceMatchEvent",
+    "ANPRDetection",
+    "ANPRPlateRecord",
+    "VehicleEvent",
+    "BiometricAuditLog",
 ]

@@ -160,6 +160,40 @@ class AIInferenceWorker(threading.Thread):
                 except Exception as ana_err:
                     logger.debug("Analytics evaluation error on [%s]: %s", self.channel_id, ana_err)
 
+                # Evaluate ANPR and Authorized Face Intelligence (Phase 7)
+                try:
+                    from engines.anpr_engine.anpr_pipeline import anpr_pipeline
+                    from engines.face_engine.face_service import face_intelligence_service
+
+                    fh, fw = packet.frame.shape[:2]
+                    for trk in tracked:
+                        cls_low = trk.class_name.lower()
+                        bx, by, bw, bh = trk.bbox
+                        x1 = max(0, int(bx * fw))
+                        y1 = max(0, int(by * fh))
+                        x2 = min(fw, int((bx + bw) * fw))
+                        y2 = min(fh, int((by + bh) * fh))
+
+                        if (x2 - x1) >= 20 and (y2 - y1) >= 20:
+                            crop = packet.frame[y1:y2, x1:x2]
+                            if cls_low in ("car", "bus", "truck", "motorcycle"):
+                                anpr_pipeline.process_vehicle(
+                                    channel_id=self.channel_id,
+                                    vehicle_bgr=crop,
+                                    track_id=trk.track_id,
+                                    vehicle_class=cls_low,
+                                    full_frame=packet.frame,
+                                    timestamp=packet.timestamp,
+                                )
+                            elif cls_low == "person":
+                                face_intelligence_service.evaluate_faces(
+                                    channel_id=self.channel_id,
+                                    frame_bgr=crop,
+                                    timestamp=packet.timestamp,
+                                )
+                except Exception as bio_err:
+                    logger.debug("ANPR / Face evaluation error on [%s]: %s", self.channel_id, bio_err)
+
                 if self.result_callback:
                     try:
                         self.result_callback(result)

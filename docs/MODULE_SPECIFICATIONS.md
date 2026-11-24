@@ -26,14 +26,17 @@
 - **Components**: `OpenVINOInferenceEngine`, `ONNXInferenceEngine`, `AIInferenceWorker`, `InferenceWorkerManager`, `YOLODetector`, `ByteTracker`, `MultiCameraTrackManager`, `AIEventProcessor`, `AIDashboardWidget`.
 - **Features**: Substream 640x360 inference ingest, aspect-ratio letterboxing, OpenCV Non-Maximum Suppression, Kalman filter trajectory tracking, strict per-camera tracking isolation, deduplicated event publishing, JPEG detection snapshots, and automatic AI event-triggered video recording.
 
-## Module 5: Human Intelligence (`engines/face_engine`, `engines/detection_engine`)
-- **Status**: PLANNED (Phase 7)
-- **Role**: Person re-identification, clothing attribute analysis, authorized face matching.
-- **Biometrics**: Strict candidate verification workflow; 512-d feature vectors from authorized enrolled identity database only.
+## Module 5: Human Intelligence (`engines/face_engine`, `modules/face_intelligence`)
+- **Status**: COMPLETE (Phase 7)
+- **Role**: Authorized-only face intelligence, quality assessment, encrypted biometric template management, and human verification workflows.
+- **Components**: `FaceDetector`, `FaceQuality`, `FaceEmbedder`, `FaceBiometricVault`, `FaceIntelligenceService`, `FaceWorkspaceWidget`.
+- **Features**: Canonical 112x112 facial alignment, Laplacian blur variance and illumination mean quality checks, 512-dimensional $L_2$-normalized feature vector extraction, hardware-bound AES-256-GCM encrypted template storage, cosine similarity candidate matching against authorized enrolled identities, human review workflow (`is_verified = False` default; similarity is non-proof of identity), template revocation policies, and immutable `BiometricAuditLog` persistence.
 
-## Module 6: Vehicle Intelligence (`engines/anpr_engine`)
-- **Status**: PLANNED (Phase 7)
-- **Role**: Vehicle classification, directional tracking, license plate localization and OCR.
+## Module 6: Vehicle Intelligence (`engines/anpr_engine`, `modules/anpr_intelligence`)
+- **Status**: COMPLETE (Phase 7)
+- **Role**: Automatic Number Plate Recognition (ANPR), character OCR, vehicle track association, and parametric investigation.
+- **Components**: `PlateDetector`, `PlateCandidate`, `PlateOCRRecognizer`, `OCRResult`, `ANPRPipeline`, `ANPRSearchEngine`, `ANPRWorkspaceWidget`.
+- **Features**: Sobel vertical edge localization, morphological closing fusion, Otsu thresholding, aspect-ratio contour filtering, perspective correction deskewing, CLAHE contrast enhancement, 28x28 template-based offline OCR, positional confusion resolution ($O \leftrightarrow 0, I \leftrightarrow 1, B \leftrightarrow 8, Z \leftrightarrow 2$), regional format validation (India, US, EU, Generic), ByteTrack vehicle track association caching (10.0s deduplication window), snapshot capture, watchlist hotlist alerts, event-triggered recording dispatch, and parametric search with CSV intelligence export.
 
 ## Module 7: Video Analytics & Intelligent Surveillance Rules (`engines/analytics_engine`, `modules/ai_intelligence`)
 - **Status**: COMPLETE (Phase 6)
