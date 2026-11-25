@@ -703,6 +703,38 @@ TEST RESULTS: 362 passed, 0 failed, 100% pass rate.
 KNOWN ISSUES: None.  
 GIT COMMIT: 192a7ca  
 
+## [1.2.2-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-011  
+FEATURE ID: F-046  
+DATE: 2026-11-25  
+VERSION: 1.2.2-alpha  
+CHANGE TYPE: FINAL VALIDATION, CONCURRENCY HARDENING & TAMPER-EVIDENT CHECKPOINTS  
+DESCRIPTION: Executed Phase 12.2 Final Independent Validation for the Unified Alarm Management Engine. Enforced database-level deduplication uniqueness by replacing non-unique indexes with an authoritative SQLite partial unique index (`uq_alarm_active_dedup` on active alarms) and resolved concurrent race conditions via atomic upsert fallback upon `IntegrityError`. Verified concurrency under 10 simultaneous worker threads with zero duplicate creation and accurate atomic occurrence counts. Established external cryptographic checkpoint ledger (`storage/alarms/checkpoints/alarm_history_checkpoints.jsonl`) with HMAC-SHA256 signatures, successfully catching tail-truncation, record deletion, reordering, and complete database whole-chain reconstruction/forgery attacks. Strictly qualified relational audit terminology as tamper-evident rather than unconditionally immutable. Added durable notification queues with payload persistence, delivery failure tracking (`FAILED`), exponential backoff retries, and permanent failure transitions (`PERMANENTLY_FAILED`). Verified comprehensive canonical event source matrix across all 11 user-specified subsystems. Validated biometric vector stripping, unconfirmed candidate match standardization, service-layer RBAC evidence access auditing, and retention pruning with evidence lock preservation. Authored authoritative report `docs/PHASE_12_2_FINAL_VALIDATION_REPORT.md`.  
+FILES CREATED:  
+- `engines/alarm_engine/checkpoints.py`  
+- `tests/integration/test_alarm_phase12_2_validation.py`  
+- `docs/PHASE_12_2_FINAL_VALIDATION_REPORT.md`  
+FILES MODIFIED:  
+- `VERSION`  
+- `core/config/settings.py`  
+- `database/models/alarms.py`  
+- `database/database_manager.py`  
+- `engines/alarm_engine/enums.py`  
+- `engines/alarm_engine/deduplicator.py`  
+- `engines/alarm_engine/alarm_service.py`  
+- `engines/alarm_engine/notification.py`  
+- `docs/DEVELOPMENT_STATUS.md`  
+- `docs/TEST_REPORTS.md`  
+- `docs/CHANGELOG.md`  
+FILES DELETED: None  
+DATABASE CHANGES: Added partial unique index `uq_alarm_active_dedup` on `alarms(dedup_key)` for active rows (`status IN ('NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'REOPENED') AND is_deleted = 0 AND dedup_key IS NOT NULL`); added `payload` (TEXT) and `next_retry_at` (TIMESTAMP) columns to `alarm_notifications` table with automatic column migration in `DatabaseManager.init_schema()`.  
+DEPENDENCIES CHANGED: None.  
+TESTS PERFORMED: Complete platform regression across 432 test cases (257 unit tests, 89 integration tests, 86 performance benchmarks). 100% pass rate in 79.38 seconds. Clean process exit code 0 verified via `$LASTEXITCODE`.  
+TEST RESULTS: 432 passed, 0 failed, 100% pass rate.  
+KNOWN ISSUES: None in software automation; physical field validation on camera hardware required before production release.  
+GIT COMMIT: Pending commit for CHG-20261125-011  
+
 ## [1.2.1-alpha] - 2026-11-25
 
 CHANGE ID: CHG-20261125-010  

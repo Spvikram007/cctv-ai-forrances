@@ -105,10 +105,27 @@ class DatabaseManager:
                             conn.execute(text("ALTER TABLE alarm_history ADD COLUMN entry_hash VARCHAR(64)"))
                     cursor.close()
 
-                    # Ensure composite indexes exist
+                    # Ensure composite and partial unique indexes exist
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_alarm_dedup_status ON alarms (dedup_key, status)"))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_alarm_deadline_status ON alarms (next_escalation_deadline, status)"))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_alarm_status_sev_time ON alarms (status, severity, last_detected_at)"))
+                    conn.execute(text("""
+                        CREATE UNIQUE INDEX IF NOT EXISTS uq_alarm_active_dedup ON alarms (dedup_key) 
+                        WHERE status IN ('NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'REOPENED') 
+                          AND is_deleted = 0 
+                          AND dedup_key IS NOT NULL
+                    """))
+
+                    # Upgrade alarm_notifications table for durable delivery retries
+                    cursor = conn.connection.cursor()
+                    cursor.execute("PRAGMA table_info(alarm_notifications)")
+                    notif_cols = {row[1] for row in cursor.fetchall()}
+                    if notif_cols:
+                        if "next_retry_at" not in notif_cols:
+                            conn.execute(text("ALTER TABLE alarm_notifications ADD COLUMN next_retry_at TIMESTAMP"))
+                        if "payload" not in notif_cols:
+                            conn.execute(text("ALTER TABLE alarm_notifications ADD COLUMN payload TEXT"))
+                    cursor.close()
         except Exception as e:
             logger.debug("Schema migration notice: %s", e)
 

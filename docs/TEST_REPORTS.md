@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 403
-- **Passed**: 403
+- **Total Test Cases**: 432
+- **Passed**: 432
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 84.65 seconds
+- **Total Duration**: 79.38 seconds
 - **Process Exit Code**: 0 verified via `$LASTEXITCODE`
 
 ---
@@ -640,17 +640,33 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `test_benchmark_deduplication_burst_rate`: **PASSED** (0.00s) — Evaluated 500 duplicate checks in 1.8 ms (277,000 checks/sec, < 50 ms target).
 - `test_benchmark_dashboard_metrics_query_latency`: **PASSED** (0.01s) — Computed executive metrics, MTTA, MTTR, and top-camera aggregations across DB in 8.2 ms (< 100 ms target).
 
+### 82. Phase 12.2 Final Independent Validation Suite (`tests/integration/test_alarm_phase12_2_validation.py`)
+- `test_database_partial_unique_index_exists`: **PASSED** (0.02s) — Confirms SQLite schema contains unique partial index `uq_alarm_active_dedup`.
+- `test_concurrent_multi_worker_identical_event_race`: **PASSED** (0.18s) — 10 concurrent worker threads simultaneously ingesting identical events; exactly 1 alarm created, occurrence count accurately reaches 10.
+- `test_resolved_alarm_permits_subsequent_reuse_of_dedup_key`: **PASSED** (0.04s) — Verifies that closed/resolved alarms allow subsequent distinct alarm creation on the same dedup_key.
+- `test_tamper_detection_on_record_modification`: **PASSED** (0.05s) — Direct modification of history comments in DB immediately caught by SHA-256 rolling digest check.
+- `test_tamper_detection_on_intermediate_record_deletion`: **PASSED** (0.04s) — Deletion of intermediate record detected via index discontinuity.
+- `test_tamper_detection_on_record_reordering`: **PASSED** (0.04s) — Record index reordering triggers verification failure.
+- `test_external_checkpoint_detects_tail_truncation`: **PASSED** (0.05s) — External HMAC-SHA256 checkpoint catches attacker deleting latest history record.
+- `test_external_checkpoint_detects_chain_reconstruction_attack`: **PASSED** (0.06s) — External checkpoint catches whole-chain rewrite and database forgery attack that would pass naive internal checks.
+- `test_durable_retry_on_network_failure_and_recovery`: **PASSED** (0.03s) — Simulates webhook network failure, failure tracking in DB, and successful exponential backoff retry.
+- `test_permanent_failure_transition_after_max_retries`: **PASSED** (0.03s) — Confirms notifications exceeding max retries transition to `PERMANENTLY_FAILED`.
+- `test_canonical_event_normalization_and_policy` (16 parameterized tests): **PASSED** (0.45s) — Covers all 11 subsystems across Camera, Stream, Recording, Storage, Analytics, Behaviour, ANPR, Face, Network, and Forensics.
+- `test_biometric_vectors_stripped_from_metadata`: **PASSED** (0.01s) — Verifies 512-d float vectors and embedding arrays are purged from alarm event metadata.
+- `test_rbac_evidence_access_and_audit_trail`: **PASSED** (0.05s) — Verifies `ACCESS_EVIDENCE` permission enforcement across Viewer, Operator, and Investigator roles with audit trail logging.
+- `test_soft_delete_and_retention_prune_with_evidence_lock`: **PASSED** (0.06s) — Retention pruning soft-deletes expired alarms while strictly preserving alarms with locked forensic evidence.
+
 ---
 
-## 82. Phase 12 Full Platform Sequential Regression Summary
+## 83. Phase 12.2 Full Platform Sequential Regression Summary
 - **Execution Date**: 2026-11-25
-- **Platform Version**: 1.2.0-alpha
-- **Change ID**: CHG-20261125-009
-- **Feature ID**: F-046 (Unified Alarm Management Engine)
-- **Total Test Suites**: 81
-- **Total Tests Collected**: 388
-- **Total Passed**: 388 (100% Pass Rate)
+- **Platform Version**: 1.2.2-alpha
+- **Change ID**: CHG-20261125-011
+- **Feature ID**: F-046 (Unified Alarm Management Engine — Final Validation)
+- **Total Test Suites**: 85
+- **Total Tests Collected**: 432
+- **Total Passed**: 432 (100% Pass Rate)
 - **Total Failed**: 0
 - **Process Exit Code**: strictly 0 (verified via `$LASTEXITCODE`)
-- **Total Duration**: 52.47 seconds
-- **Hardware Platform**: Intel Core i5-12400, Intel UHD Graphics 730, 16 GB RAM, Windows 11
+- **Total Duration**: 79.38 seconds
+- **Hardware Platform**: Intel Core i5-12400, Intel UHD Graphics 730, 16 GB RAM, Windows 11 Enterprise (64-bit)

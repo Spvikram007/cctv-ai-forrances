@@ -63,3 +63,4 @@ class AlarmAction(str, Enum):
     CLOSED = "CLOSED"
     REOPENED = "REOPENED"
     LINKED = "LINKED"
+    DELETED = "DELETED"

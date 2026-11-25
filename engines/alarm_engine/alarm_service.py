@@ -15,6 +15,7 @@ import threading
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import desc, func, and_, or_
+from sqlalchemy.exc import IntegrityError
 
 from database.database_manager import db_manager
 from database.models.alarms import (
@@ -41,6 +42,7 @@ from engines.alarm_engine.deduplicator import AlarmDeduplicator
 from engines.alarm_engine.correlator import AlarmCorrelator
 from engines.alarm_engine.escalator import AlarmEscalationManager
 from engines.alarm_engine.notification import AlarmNotificationDispatcher
+from engines.alarm_engine.checkpoints import create_alarm_checkpoint, verify_checkpoint_integrity
 from core.events.event_bus import bus
 from core.logging.logger import get_logger
 
@@ -51,9 +53,9 @@ logger = get_logger("alarm_service")
 ROLE_PERMISSIONS: Dict[str, set] = {
     "VIEWER": {"VIEW"},
     "OPERATOR": {"VIEW", "ACKNOWLEDGE", "INVESTIGATE", "RESOLVE", "ADD_NOTE", "ESCALATE"},
-    "SUPERVISOR": {"VIEW", "ACKNOWLEDGE", "INVESTIGATE", "ASSIGN", "RESOLVE", "CLOSE", "REOPEN", "ADD_NOTE", "ESCALATE", "CONFIGURE_POLICY"},
+    "SUPERVISOR": {"VIEW", "ACKNOWLEDGE", "INVESTIGATE", "ASSIGN", "RESOLVE", "CLOSE", "REOPEN", "ADD_NOTE", "ESCALATE", "CONFIGURE_POLICY", "PURGE"},
     "INVESTIGATOR": {"VIEW", "ACKNOWLEDGE", "INVESTIGATE", "RESOLVE", "CLOSE", "ADD_NOTE", "ACCESS_EVIDENCE", "LINK"},
-    "ADMIN": {"VIEW", "ACKNOWLEDGE", "INVESTIGATE", "ASSIGN", "RESOLVE", "CLOSE", "REOPEN", "ADD_NOTE", "ESCALATE", "ACCESS_EVIDENCE", "LINK", "CONFIGURE_POLICY", "ADMIN_OVERRIDE"},
+    "ADMIN": {"VIEW", "ACKNOWLEDGE", "INVESTIGATE", "ASSIGN", "RESOLVE", "CLOSE", "REOPEN", "ADD_NOTE", "ESCALATE", "ACCESS_EVIDENCE", "LINK", "CONFIGURE_POLICY", "ADMIN_OVERRIDE", "DELETE", "PURGE"},
 }
 
 
@@ -339,60 +341,81 @@ class AlarmEngineService:
         now = datetime.now(timezone.utc)
         deadline = now + timedelta(seconds=policy.escalation_timeout_seconds) if policy.escalation_timeout_seconds > 0 else None
 
-        with db_manager.get_session() as session:
-            new_alarm = Alarm(
-                event_id=event.event_id,
-                title=event.title,
-                description=event.description,
-                category=event.category.value,
-                source_subsystem=event.source_subsystem,
-                severity=event.severity.value,
-                priority=event.priority.value,
-                status=AlarmStatus.NEW.value,
-                camera_id=event.camera_id,
-                site_id=event.site_id,
-                zone_id=event.zone_id,
-                first_detected_at=event.timestamp,
-                last_detected_at=event.timestamp,
-                occurrence_count=1,
-                related_alarm_id=related_alarm_id,
-                escalation_level=0,
-                next_escalation_deadline=deadline,
-                evidence_refs=json.dumps(event.evidence_refs) if event.evidence_refs else None,
-                alarm_metadata=json.dumps(event.metadata) if event.metadata else None,
-                dedup_key=event.dedup_key,
-            )
-            session.add(new_alarm)
-            session.flush()
+        try:
+            with db_manager.get_session() as session:
+                new_alarm = Alarm(
+                    event_id=event.event_id,
+                    title=event.title,
+                    description=event.description,
+                    category=event.category.value,
+                    source_subsystem=event.source_subsystem,
+                    severity=event.severity.value,
+                    priority=event.priority.value,
+                    status=AlarmStatus.NEW.value,
+                    camera_id=event.camera_id,
+                    site_id=event.site_id,
+                    zone_id=event.zone_id,
+                    first_detected_at=event.timestamp,
+                    last_detected_at=event.timestamp,
+                    occurrence_count=1,
+                    related_alarm_id=related_alarm_id,
+                    escalation_level=0,
+                    next_escalation_deadline=deadline,
+                    evidence_refs=json.dumps(event.evidence_refs) if event.evidence_refs else None,
+                    alarm_metadata=json.dumps(event.metadata) if event.metadata else None,
+                    dedup_key=event.dedup_key,
+                )
+                session.add(new_alarm)
+                session.flush()
 
-            # Record atomic event log
-            alarm_event = AlarmEvent(
-                alarm_id=new_alarm.id,
-                source_event_id=event.event_id,
-                source_subsystem=event.source_subsystem,
-                event_type=event.event_type,
-                camera_id=event.camera_id,
-                event_timestamp=event.timestamp,
-                received_timestamp=now,
-                confidence=event.confidence,
-                event_metadata=json.dumps(event.metadata) if event.metadata else None,
-                processing_status="PROCESSED",
-            )
-            session.add(alarm_event)
+                # Record atomic event log
+                alarm_event = AlarmEvent(
+                    alarm_id=new_alarm.id,
+                    source_event_id=event.event_id,
+                    source_subsystem=event.source_subsystem,
+                    event_type=event.event_type,
+                    camera_id=event.camera_id,
+                    event_timestamp=event.timestamp,
+                    received_timestamp=now,
+                    confidence=event.confidence,
+                    event_metadata=json.dumps(event.metadata) if event.metadata else None,
+                    processing_status="PROCESSED",
+                )
+                session.add(alarm_event)
 
-            # Record creation audit trail with rolling hash chain
-            self._append_history_entry(
-                session=session,
-                alarm_id=new_alarm.id,
-                previous_status=None,
-                new_status=AlarmStatus.NEW.value,
-                operator="SYSTEM",
-                timestamp=now,
-                action=AlarmAction.CREATED.value,
-                reason="Event normalized and ingested",
-                comments=f"Created from {event.source_subsystem}:{event.event_type}",
-            )
-            alarm_id = str(new_alarm.id)
+                # Record creation audit trail with rolling hash chain
+                self._append_history_entry(
+                    session=session,
+                    alarm_id=new_alarm.id,
+                    previous_status=None,
+                    new_status=AlarmStatus.NEW.value,
+                    operator="SYSTEM",
+                    timestamp=now,
+                    action=AlarmAction.CREATED.value,
+                    reason="Event normalized and ingested",
+                    comments=f"Created from {event.source_subsystem}:{event.event_type}",
+                )
+                alarm_id = str(new_alarm.id)
+        except IntegrityError:
+            # Race condition under concurrent workers: another thread committed an active alarm with the same dedup_key
+            logger.info("Database unique constraint triggered for dedup_key '%s' — resolving race via atomic update", event.dedup_key)
+            with db_manager.get_session() as session:
+                existing = (
+                    session.query(Alarm)
+                    .filter(
+                        Alarm.dedup_key == event.dedup_key,
+                        Alarm.status.in_([AlarmStatus.NEW.value, AlarmStatus.ACKNOWLEDGED.value, AlarmStatus.IN_PROGRESS.value, AlarmStatus.REOPENED.value]),
+                        Alarm.is_deleted == False,
+                    )
+                    .first()
+                )
+                if existing:
+                    existing_id = str(existing.id)
+                    self._update_duplicate_alarm(existing_id, event, existing.occurrence_count + 1)
+                    if event.dedup_key:
+                        self.deduplicator.register_alarm(event.dedup_key, existing_id, status=existing.status)
+                    return existing_id
+            raise
 
         try:
             logger.info("Created new alarm %s [%s] - Severity: %s", alarm_id, event.title, event.severity.value)
@@ -559,10 +582,12 @@ class AlarmEngineService:
         role: str = "OPERATOR",
         reason: str = "False alarm / Verified resolved",
         comments: str = "",
+        resolution_notes: str = "",
     ) -> bool:
         """Resolves an alarm."""
         self._validate_permission(role, "RESOLVE")
         now = datetime.now(timezone.utc)
+        comments = comments or resolution_notes or ""
 
         cam_id = None
         with db_manager.get_session() as session:
@@ -603,10 +628,13 @@ class AlarmEngineService:
         operator: str,
         role: str = "SUPERVISOR",
         comments: str = "",
+        reason: str = "",
     ) -> bool:
         """Closes an alarm permanently after supervisory review."""
         self._validate_permission(role, "CLOSE")
         now = datetime.now(timezone.utc)
+        comments = comments or reason or "Case closed"
+        reason_text = reason or "Closed after review"
 
         with db_manager.get_session() as session:
             alarm = session.query(Alarm).filter(Alarm.id == alarm_id, Alarm.is_deleted == False).first()
@@ -627,8 +655,8 @@ class AlarmEngineService:
                 operator=operator,
                 timestamp=now,
                 action=AlarmAction.CLOSED.value,
-                reason="Closed after review",
-                comments=comments or "Case closed",
+                reason=reason_text,
+                comments=comments,
             )
 
         self.deduplicator.update_status(alarm_id, AlarmStatus.CLOSED.value)
@@ -678,12 +706,14 @@ class AlarmEngineService:
         self,
         alarm_id: str,
         operator: str,
-        note_text: str,
+        note_text: str = "",
         role: str = "OPERATOR",
+        note: Optional[str] = None,
     ) -> bool:
         """Appends an operator note to the alarm history."""
         self._validate_permission(role, "ADD_NOTE")
         now = datetime.now(timezone.utc)
+        note_content = (note_text or note or "").strip()
 
         with db_manager.get_session() as session:
             alarm = session.query(Alarm).filter(Alarm.id == alarm_id, Alarm.is_deleted == False).first()
@@ -699,7 +729,7 @@ class AlarmEngineService:
                 timestamp=now,
                 action=AlarmAction.NOTE_ADDED.value,
                 reason="Operator observation",
-                comments=note_text.strip(),
+                comments=note_content,
             )
 
         bus.publish("alarm.note_added", {"alarm_id": alarm_id, "operator": operator}, source="alarm_engine")
@@ -780,10 +810,10 @@ class AlarmEngineService:
         logger.info("Evidence access audited for alarm %s by %s (%s)", alarm_id, operator, role)
         return True
 
-    def verify_history_integrity(self, alarm_id: str) -> Dict[str, Any]:
+    def verify_history_integrity(self, alarm_id: str, custom_checkpoint_path: Optional[str] = None) -> Dict[str, Any]:
         """
-        Cryptographically verifies the rolling SHA-256 hash chain of an alarm's audit history.
-        Detects any tampering, record alterations, omissions, or reordering.
+        Cryptographically verifies the rolling SHA-256 hash chain of an alarm's audit history
+        and cross-validates against external authoritative checkpoints to detect forgery/reconstruction.
         """
         with db_manager.get_session() as session:
             entries = (
@@ -798,6 +828,7 @@ class AlarmEngineService:
                     "total_entries": 0,
                     "broken_at_index": None,
                     "details": "No audit trail entries recorded.",
+                    "checkpoint_verified": False,
                 }
 
             expected_prev_hash = "0" * 64
@@ -808,6 +839,7 @@ class AlarmEngineService:
                         "total_entries": len(entries),
                         "broken_at_index": idx,
                         "details": f"Index discontinuity: expected index {idx}, found {entry.entry_index}.",
+                        "checkpoint_verified": False,
                     }
 
                 if entry.prev_hash != expected_prev_hash:
@@ -816,6 +848,7 @@ class AlarmEngineService:
                         "total_entries": len(entries),
                         "broken_at_index": idx,
                         "details": f"Hash chain linkage broken at index {idx}: expected prev_hash {expected_prev_hash}, found {entry.prev_hash}.",
+                        "checkpoint_verified": False,
                     }
 
                 recomputed = self.compute_history_hash(
@@ -836,16 +869,110 @@ class AlarmEngineService:
                         "total_entries": len(entries),
                         "broken_at_index": idx,
                         "details": f"Cryptographic digest mismatch at index {idx}: stored {entry.entry_hash}, recomputed {recomputed}.",
+                        "checkpoint_verified": False,
                     }
 
                 expected_prev_hash = entry.entry_hash
+
+            # Cross-verify against external authoritative filesystem checkpoints
+            cp_result = verify_checkpoint_integrity(alarm_id, entries, custom_path=custom_checkpoint_path)
+            if not cp_result.get("checkpoint_verified", True):
+                violated_idx = None
+                if "violated_checkpoint" in cp_result:
+                    violated_idx = cp_result["violated_checkpoint"].get("entry_index")
+                return {
+                    "valid": False,
+                    "total_entries": len(entries),
+                    "broken_at_index": violated_idx,
+                    "details": cp_result["details"],
+                    "checkpoint_violation": True,
+                    "checkpoint_verified": False,
+                }
 
             return {
                 "valid": True,
                 "total_entries": len(entries),
                 "broken_at_index": None,
-                "details": f"Cryptographic integrity successfully verified across all {len(entries)} audit entries.",
+                "details": f"Cryptographic integrity successfully verified across all {len(entries)} audit entries (checkpoints verified: {cp_result.get('has_checkpoints', False)}).",
+                "checkpoint_verified": cp_result.get("has_checkpoints", False),
             }
+
+    def create_history_checkpoint(self, alarm_id: str, custom_path: Optional[str] = None) -> Dict[str, Any]:
+        """Creates an external signed checkpoint anchoring the latest history entry."""
+        with db_manager.get_session() as session:
+            entries = (
+                session.query(AlarmHistory)
+                .filter(AlarmHistory.alarm_id == alarm_id, AlarmHistory.is_deleted == False)
+                .order_by(AlarmHistory.entry_index.asc())
+                .all()
+            )
+            if not entries:
+                raise ValueError(f"No history entries found for alarm '{alarm_id}'")
+            latest = entries[-1]
+            return create_alarm_checkpoint(
+                alarm_id=alarm_id,
+                entry_index=latest.entry_index,
+                entry_hash=latest.entry_hash,
+                total_entries=len(entries),
+                custom_path=custom_path,
+            )
+
+    def soft_delete_alarm(
+        self,
+        alarm_id: str,
+        operator: str,
+        role: str = "ADMIN",
+        reason: str = "Administrative deletion",
+    ) -> bool:
+        """Soft-deletes an alarm with RBAC enforcement and append-only audit trail."""
+        self._validate_permission(role, "DELETE")
+        now = datetime.now(timezone.utc)
+        with db_manager.get_session() as session:
+            alarm = session.query(Alarm).filter(Alarm.id == alarm_id, Alarm.is_deleted == False).first()
+            if not alarm:
+                return False
+            alarm.is_deleted = True
+            self._append_history_entry(
+                session=session,
+                alarm_id=alarm.id,
+                previous_status=alarm.status,
+                new_status=alarm.status,
+                operator=operator,
+                action=AlarmAction.DELETED.value,
+                timestamp=now,
+                reason=reason,
+                comments=f"Soft deleted by {operator}",
+            )
+        bus.publish("alarm.deleted", {"alarm_id": alarm_id, "operator": operator}, source="alarm_engine")
+        return True
+
+    def purge_expired_alarms(
+        self,
+        retention_days: int = 90,
+        operator: str = "SYSTEM",
+        role: str = "ADMIN",
+    ) -> int:
+        """Purges closed or resolved alarms older than retention_days, strictly preserving locked evidence."""
+        self._validate_permission(role, "PURGE")
+        cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        with db_manager.get_session() as session:
+            candidates = (
+                session.query(Alarm)
+                .filter(
+                    Alarm.status.in_([AlarmStatus.RESOLVED.value, AlarmStatus.CLOSED.value]),
+                    Alarm.last_detected_at < cutoff,
+                    Alarm.is_deleted == False,
+                )
+                .all()
+            )
+            purged_count = 0
+            for a in candidates:
+                ev_refs = json.loads(a.evidence_refs) if a.evidence_refs else {}
+                if ev_refs.get("is_locked") or ev_refs.get("evidence_package_id"):
+                    continue
+                a.is_deleted = True
+                purged_count += 1
+            return purged_count
 
     # -------------------------------------------------------------------------
     # Queries & Dashboard Metrics

@@ -142,15 +142,21 @@ class AlarmDeduplicator:
 
     def update_status(self, alarm_id: str, new_status: str) -> None:
         """Updates or evicts cached entry when alarm transitions to resolved/closed."""
+        target_id = str(alarm_id)
         with self._lock:
             keys_to_remove = []
             for k, entry in self._entries.items():
-                if entry.alarm_id == alarm_id:
+                if entry.alarm_id == target_id:
                     entry.status = new_status
                     if new_status not in ACTIVE_STATUSES:
                         keys_to_remove.append(k)
             for k in keys_to_remove:
                 del self._entries[k]
+
+    def evict(self, dedup_key: str) -> None:
+        """Explicitly evicts a key from the in-memory cache."""
+        with self._lock:
+            self._entries.pop(dedup_key, None)
 
     def clear(self) -> None:
         with self._lock:

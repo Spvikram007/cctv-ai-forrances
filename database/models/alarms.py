@@ -7,7 +7,7 @@ operator assignments, and notification delivery records.
 """
 
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Float, Boolean, Text, DateTime, Index
+from sqlalchemy import Column, String, Integer, Float, Boolean, Text, DateTime, Index, text
 from database.models.base import Base
 
 
@@ -52,6 +52,13 @@ class Alarm(Base):
         Index("idx_alarm_dedup_status", "dedup_key", "status"),
         Index("idx_alarm_deadline_status", "next_escalation_deadline", "status"),
         Index("idx_alarm_status_sev_time", "status", "severity", "last_detected_at"),
+        Index(
+            "uq_alarm_active_dedup",
+            "dedup_key",
+            unique=True,
+            sqlite_where=text("status IN ('NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'REOPENED') AND is_deleted = 0 AND dedup_key IS NOT NULL"),
+            postgresql_where=text("status IN ('NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'REOPENED') AND is_deleted = FALSE AND dedup_key IS NOT NULL"),
+        ),
     )
 
 
@@ -129,14 +136,16 @@ class AlarmAssignment(Base):
 
 class AlarmNotification(Base):
     """
-    Record of sent desktop, audio, or in-app notifications.
+    Record of sent desktop, audio, webhook, or in-app notifications with durable retry state.
     """
     __tablename__ = "alarm_notifications"
 
     alarm_id = Column(String(36), nullable=False, index=True)
     channel = Column(String(30), nullable=False, index=True)
     recipient = Column(String(100), nullable=False)
-    delivery_status = Column(String(20), nullable=False, default="DELIVERED")
+    delivery_status = Column(String(20), nullable=False, default="DELIVERED", index=True)
     retry_count = Column(Integer, nullable=False, default=0)
     error_message = Column(Text, nullable=True)
+    payload = Column(Text, nullable=True)
+    next_retry_at = Column(DateTime(timezone=True), nullable=True)
     timestamp = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
