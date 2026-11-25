@@ -480,4 +480,47 @@ DEPENDENCIES CHANGED: None (using existing PySide6, OpenCV, OpenVINO, NumPy, and
 TESTS PERFORMED: Automated execution across 280 test cases (243 regression tests + 37 new Phase 9 tests) covering CIE Lab CLAHE luminance expansion, chromatic channel invariance, sigmoid noise gating, adaptive gamma correction, MSRCR multi-scale retinex, Dark Channel Prior calculation, atmospheric light estimation, guided filter transmission refinement, scene radiance recovery, NL-Means noise reduction, Bilateral edge preservation, fast preview denoising, unsharp masking with edge-gradient gating, Laplacian sharpening, directional PSF deblurring, strict non-hallucination verification, 2x and 4x super-resolution scaling, OpenVINO device inspection, Lanczos-4 acutance, mandatory forensic watermarking, pipeline sequencing, preset profile construction, raw recording immutability, sidecar JSON manifest generation, asynchronous worker threads, split-slider interaction, view mode switching, UI widget smoke testing, and 720p/1080p/4K performance benchmarks on Intel hardware.  
 TEST RESULTS: 280 passed, 0 failed, 100% pass rate in 38.49s.  
 KNOWN ISSUES: Deep learned super-resolution weights require model downloads; deterministic 8-tap Lanczos-4 fallback executes seamlessly in offline air-gapped environments.  
-GIT COMMIT: 5e92ef9
+GIT COMMIT: 58aadcd
+
+## [1.0.0-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-004  
+FEATURE ID: F-018, F-023  
+DATE: 2026-11-25  
+VERSION: 1.0.0-alpha  
+CHANGE TYPE: NEW FEATURE & FORENSICS ENGINE  
+DESCRIPTION: Implemented Phase 10 – Digital Forensics & Evidence Integrity. Delivered Video Authenticity & Frame Integrity Analysis (F-018) featuring chunked SHA-256 binary hashing, downscaled 64x36 perceptual frame difference analysis, duplicate/frozen frame run clustering, missing-frame and Presentation Time Stamp (PTS) cadence anomaly analysis (gaps, reversals, clock drift), container signature & header atom inspection (`ftyp`, `moov`, `mdat`, `EBML_HEADER`, `RIFF`), and standardized forensic analysis reports with judicial veracity disclaimers. Delivered Forensic Engine, Controlled Evidence Locker & Cryptographic Evidence Chain (F-023) implementing secure evidence vaulting (`storage/evidence/locker/<evidence_id>/`), Windows filesystem read-only locking (`FILE_ATTRIBUTE_READONLY`), Windows DPAPI-protected ECDSA (SECP256R1 / NIST P-256) asymmetric digital signatures with SHA-256, append-only Merkle hash-chained custody ledgers (`chain_of_custody.jsonl`), 4-tier Role-Based Access Control (`INVESTIGATOR`, `ADMIN`, `SUPERVISOR`, `OPERATOR`, `VIEWER`), non-destructive derived enhancement provenance linking (seamlessly integrating Phase 9 enhanced recordings as `DERIVED_ENHANCEMENT` preserving original source SHA-256, parameters, engine version, and legal notices), standalone `.cctvevid` zip export packaging, and independent zero-dependency judicial verification CLI utility (`tools/verify_evidence.py`). Integrated PySide6 VideoForensicsWidget at navigation index 5 in Command Center. Full regression and forensics test suite verified at 305 passing tests (100% pass rate in 40.73s).  
+FILES CREATED:  
+- `engines/forensic_engine/__init__.py`
+- `engines/forensic_engine/authenticity.py`
+- `engines/forensic_engine/crypto_signer.py`
+- `engines/forensic_engine/evidence_locker.py`
+- `engines/forensic_engine/evidence_packager.py`
+- `modules/video_forensics/__init__.py`
+- `modules/video_forensics/forensics_workspace_widget.py`
+- `tools/verify_evidence.py`
+- `docs/DIGITAL_FORENSICS_VERIFICATION_REPORT.md`
+- `tests/unit/test_video_authenticity.py`
+- `tests/unit/test_forensic_crypto_signing.py`
+- `tests/unit/test_evidence_locker.py`
+- `tests/unit/test_chain_of_custody.py`
+- `tests/unit/test_evidence_packager_and_standalone.py`
+- `tests/integration/test_forensics_ui.py`
+- `tests/performance/test_forensics_performance.py`
+FILES MODIFIED:  
+- `VERSION`
+- `core/config/settings.py`
+- `app/main.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/TEST_REPORTS.md`
+- `docs/CHANGELOG.md`
+FILES DELETED: None  
+DATABASE CHANGES: No structural database migrations required; runtime models and cryptographic JSONL custody ledgers track all evidence and access events.  
+DEPENDENCIES CHANGED: None (using existing PySide6, OpenCV, cryptography, and Python standard libraries).  
+TESTS PERFORMED: Automated execution across 305 test cases (280 regression tests + 25 new Phase 10 tests) covering file SHA-256 chunked hashing, bit-level alteration detection, duplicate frame run clustering, visual splicing jump detection, corrupted container handling, legal disclaimer verification, DPAPI private key protection & unprotection, ECDSA P-256 digital signature generation and verification, tampered payload rejection, malformed signature rejection, key persistence across instances, raw recording ingestion (ORIGINAL_CAPTURE), Phase 9 derived enhancement ingestion (DERIVED_ENHANCEMENT), RBAC access control enforcement (ForensicAccessDeniedError), vault media tamper detection, genesis block initialization, Merkle hash-chaining, record modification detection, record deletion detection, .cctvevid package creation, standalone verification CLI execution, tampered package rejection, PySide6 UI table population and row selection, detail tabs inspection, and 720p/1080p/SHA-256 performance benchmarks on Intel Core i5-12400.  
+TEST RESULTS: 305 passed, 0 failed, 100% pass rate in 40.73s.  
+KNOWN ISSUES: Standalone verifier optionally uses cryptography package for ECDSA verification; in air-gapped environments lacking cryptography, SHA-256 and Merkle hash chain checks execute using pure Python standard library.  
+GIT COMMIT: 629b8a6

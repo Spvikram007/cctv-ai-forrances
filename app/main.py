@@ -24,6 +24,7 @@ from modules.live_monitoring.live_view_widget import LiveViewWidget
 from modules.video_playback.playback_widget import PlaybackWidget
 from modules.ai_intelligence.ai_dashboard_widget import AIDashboardWidget
 from modules.anpr_intelligence.anpr_workspace_widget import ANPRWorkspaceWidget
+from modules.video_forensics.forensics_workspace_widget import VideoForensicsWidget
 from modules.video_enhancement.enhancement_widget import VideoEnhancementWidget
 from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
 from engines.video_engine.stream_manager import stream_manager
@@ -135,13 +136,9 @@ class MainWindow(QMainWindow):
         self.investigation_widget = ANPRWorkspaceWidget()
         self.stack.addWidget(self.investigation_widget)
 
-        # View 5: Video Forensics (Digital Integrity & Discontinuity Analysis)
-        title_5, desc_5 = self.NAV_ITEMS[5]
-        self.forensics_placeholder = ModulePlaceholderWidget(
-            module_title=f"{title_5.upper()}",
-            phase_info=f"{desc_5} — Scheduled for implementation under Phase 5.",
-        )
-        self.stack.addWidget(self.forensics_placeholder)
+        # View 5: Video Forensics Workspace (Phase 10 - F-018 & F-023)
+        self.forensics_widget = VideoForensicsWidget()
+        self.stack.addWidget(self.forensics_widget)
 
         # View 6: Video Enhancement Workspace (Phase 9 - F-040 through F-045)
         self.enhancement_widget = VideoEnhancementWidget()

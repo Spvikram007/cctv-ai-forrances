@@ -63,9 +63,18 @@
   - *Non-Destructive Enhancement Workspace (F-045)*: PySide6 command center mounted at View 6 featuring interactive draggable split-screen slider ($0\%-100\%$) and side-by-side viewports, preset manager (Neutral, Night Vision, Fog Penetration, Plate Clarity, Face Detail), decoupled asynchronous worker (`EnhancementWorker`), strict non-destructive isolation (`storage/enhanced/`), and cryptographic SHA-256 sidecar JSON audit manifests.
 
 ## Module 10: Video Forensics (`modules/video_forensics`, `engines/forensic_engine`)
-- **Status**: PLANNED (Phase 10)
-- **Role**: Cryptographic integrity and tamper analysis.
-- **Checks**: SHA-256 chain of custody, frame discontinuity audit, duplicate frame detection, timestamp and compression anomaly inspection.
+- **Status**: COMPLETE (Phase 10)
+- **Role**: Digital video authenticity verification, frame discontinuity & duplicate frame analysis, container & atom inspection, Windows DPAPI-protected asymmetric signing, controlled evidence locker, append-only Merkle hash-chained custody ledgers, standalone court export packaging, and judicial verification utilities.
+- **Components**: `VideoAuthenticityAnalyzer`, `ForensicAnalysisReport`, `FrameDiscontinuity`, `DuplicateFrameCluster`, `TimestampAnomaly`, `ContainerMetadata`, `ForensicSigner`, `SignedEvidenceManifest`, `ChainOfCustodyLedger`, `CustodyEvent`, `EvidenceLocker`, `EvidencePackager`, `VideoForensicsWidget`.
+- **Key Features**:
+  - *Video Authenticity & Hash Verification (F-018)*: Chunked SHA-256 binary hashing, container signature & atom structure inspection (`ftyp`, `moov`, `mdat`, `EBML_HEADER`, `RIFF`), and codec profile verification.
+  - *Discontinuity & Duplicate Frame Detection (F-018)*: Downscaled $64 \times 36$ perceptual difference analysis; detects frozen sequences ($D < 0.002$), abrupt visual splicing cuts ($D > 0.65$), and timeline omissions without visual jumps.
+  - *Timestamp Cadence & Anomaly Analysis (F-018)*: Evaluates Presentation Time Stamps (PTS); flags dropped frames ($\Delta t > 1.5 \times dt$), out-of-order/reversed timestamps ($\Delta t < -0.005\text{s}$), and framerate drift.
+  - *Controlled Evidence Locker (F-023)*: Centralized secure vaulting (`storage/evidence/locker/<evidence_id>/`), Windows read-only filesystem attribute enforcement (`FILE_ATTRIBUTE_READONLY`), and 4-tier Role-Based Access Control (`INVESTIGATOR`, `ADMIN`, `SUPERVISOR`, `OPERATOR`, `VIEWER`).
+  - *Cryptographic Signing Engine (F-023)*: Asymmetric ECDSA (SECP256R1 / NIST P-256) digital signatures with SHA-256. Private signing keys are sealed at rest using Windows Data Protection API (**Windows DPAPI**, `CryptProtectData` with custom hardware entropy).
+  - *Append-Only Chain-of-Custody Ledger (F-023)*: Merkle-style hash-chained JSONL records ($H_i = \text{SHA256}(H_{i-1} + \text{canonical}(event_i))$) logging every access, view, verification, export, and unauthorized attempt.
+  - *Derived Enhancement Provenance (Phase 9 Integration)*: Automatically detects Phase 9 derived enhanced files, marks them as `DERIVED_ENHANCEMENT`, preserves original source hash and pipeline settings, and burns legal disclaimers.
+  - *Standalone Verification Utility & Packages (F-023)*: Exports `.cctvevid` zip containers containing media, signed manifest, public key, custody ledger, and zero-dependency standalone CLI verification script (`tools/verify_evidence.py`) executable on any Python 3.8+ system without platform installation.
 
 ## Module 11: Camera Integration (`integrations`, `engines/video_engine`)
 - **Status**: COMPLETE (Phase 1, 2 & Phase 3 Universal PTZ / Stream Polish)

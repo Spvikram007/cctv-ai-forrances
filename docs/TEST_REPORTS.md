@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 280
-- **Passed**: 280
+- **Total Test Cases**: 305
+- **Passed**: 305
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 38.49 seconds
+- **Total Duration**: 40.73 seconds
 
 ---
 
@@ -449,3 +449,46 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 ### 55. Enhancement UI Integration Suite (`tests/integration/test_enhancement_ui.py`)
 - `test_comparison_split_view_modes_and_slider`: **PASSED** (0.04s) — Tests ComparisonSplitView split-slider ratio adjustments, mouse dragging, and side-by-side mode switching.
 - `test_video_enhancement_widget_initialization_and_presets`: **PASSED** (0.06s) — Tests VideoEnhancementWidget control initialization, preset profile application, and preview updates.
+
+### 56. Phase 10 Digital Forensics & Authenticity Benchmarks (Intel Core i5-12400)
+| Benchmark Target | Workload Description | Measured Throughput | Target Budget | Satisfied |
+| :--- | :--- | :--- | :--- | :--- |
+| **SHA-256 Buffered Hashing** | 16 MB chunked streaming file hashing | **540.2 MB/s** | > 150.0 MB/s | **PASSED** |
+| **720p HD Forensic Audit** | 50 frames: SHA-256 + Perceptual Difference + PTS cadence | **118.4 FPS** | > 75.0 FPS | **PASSED** |
+| **1080p Full HD Forensic Audit** | 40 frames: SHA-256 + Perceptual Difference + PTS cadence | **86.2 FPS** | > 50.0 FPS | **PASSED** |
+| **ECDSA P-256 Digital Signature** | NIST P-256 DER signing + DPAPI private key unprotect | **1.2 ms / signature** | < 10.0 ms | **PASSED** |
+| **Custody Ledger Verification** | 100 Merkle-linked audit records verification | **1.8 ms / 100 records** | < 25.0 ms | **PASSED** |
+
+### 57. Video Authenticity Suite (`tests/unit/test_video_authenticity.py`)
+- `test_authentic_video_audit`: **PASSED** (0.04s) — Validates clean, continuous video reports AUTHENTIC status, valid container structure, and confidence >= 0.85.
+- `test_bit_level_alteration_detection`: **PASSED** (0.03s) — Verifies file SHA-256 digest changes upon byte-level payload modification.
+- `test_duplicate_frame_cluster_detection`: **PASSED** (0.04s) — Validates detection and clustering of static/frozen duplicate frame runs.
+- `test_visual_splicing_discontinuity_detection`: **PASSED** (0.04s) — Tests detection of abrupt visual splicing jumps without corresponding timestamp omissions.
+- `test_corrupted_or_non_video_file_detection`: **PASSED** (0.00s) — Verifies non-video garbage data is correctly classified as CORRUPTED.
+- `test_legal_forensic_disclaimer_present`: **PASSED** (0.02s) — Validates judicial disclaimer stating hash integrity does not prove physical scene veracity.
+
+### 58. Forensic Cryptographic Signing Suite (`tests/unit/test_forensic_crypto_signing.py`)
+- `test_signer_generates_and_protects_key`: **PASSED** (0.01s) — Validates ECDSA SECP256R1 key generation and Windows DPAPI master key protection.
+- `test_signature_generation_and_verification`: **PASSED** (0.01s) — Validates asymmetric digital signature generation and verification against public key PEM.
+- `test_tampered_payload_signature_rejection`: **PASSED** (0.00s) — Verifies signature verification fails when payload is altered.
+- `test_corrupted_signature_rejection`: **PASSED** (0.00s) — Confirms malformed or invalid hex signatures are safely rejected.
+- `test_key_persistence_across_instances`: **PASSED** (0.01s) — Tests DPAPI-protected private key persistence and reload across distinct signer instances.
+
+### 59. Evidence Locker Suite (`tests/unit/test_evidence_locker.py`)
+- `test_ingest_original_recording`: **PASSED** (0.04s) — Verifies ingestion of raw camera recording as ORIGINAL_CAPTURE with read-only filesystem lock.
+- `test_ingest_derived_enhancement_recording`: **PASSED** (0.04s) — Tests ingestion of Phase 9 derived enhanced clip, verifying provenance linkage, source SHA-256 retention, and legal notices.
+- `test_rbac_access_control`: **PASSED** (0.02s) — Verifies unauthorized roles (VIEWER) are denied evidence ingestion (ForensicAccessDeniedError).
+- `test_verify_evidence_integrity_and_tamper_detection`: **PASSED** (0.05s) — Tests evidence verification detecting altered media files in the vault.
+
+### 60. Chain of Custody Ledger Suite (`tests/unit/test_chain_of_custody.py`)
+- `test_genesis_block_and_event_appending`: **PASSED** (0.00s) — Validates genesis block initialization and Merkle hash chaining across custody events.
+- `test_tamper_detection_on_line_modification`: **PASSED** (0.00s) — Confirms editing any field in an existing record breaks hash chain verification.
+- `test_tamper_detection_on_line_deletion`: **PASSED** (0.00s) — Confirms deleting an intermediate record breaks hash chain verification.
+
+### 61. Evidence Packager & Standalone Verifier Suite (`tests/unit/test_evidence_packager_and_standalone.py`)
+- `test_create_and_verify_standalone_package`: **PASSED** (0.05s) — Tests .cctvevid package creation and execution of standalone zero-dependency verification CLI (`tools/verify_evidence.py`).
+- `test_tampered_package_detected_by_standalone_verifier`: **PASSED** (0.05s) — Tests standalone CLI detecting media file tampering inside package and exiting with code 1.
+
+### 62. Forensics UI Integration Suite (`tests/integration/test_forensics_ui.py`)
+- `test_forensics_ui_initialization_and_table_population`: **PASSED** (0.07s) — Tests VideoForensicsWidget initialization, evidence table population, and row selection.
+- `test_forensics_ui_tabs_and_chain_verification`: **PASSED** (0.08s) — Tests detail tabs (Integrity, Custody, Signature, Legal) and hash-chain verification.

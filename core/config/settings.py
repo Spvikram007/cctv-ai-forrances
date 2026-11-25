@@ -38,6 +38,7 @@ class StorageSettings(BaseSettings):
     evidence_dir: str = Field(default="storage/evidence")
     exports_dir: str = Field(default="storage/exports")
     enhanced_dir: str = Field(default="storage/enhanced")
+    forensics_dir: str = Field(default="storage/forensics")
     backups_dir: str = Field(default="storage/backups")
     logs_dir: str = Field(default="storage/logs")
     retention_days: int = Field(default=30, ge=1)
@@ -85,7 +86,7 @@ class SecuritySettings(BaseSettings):
 class PlatformSettings(BaseSettings):
     """Master application configuration container."""
     app_name: str = "CCTV AI Intelligence Platform"
-    app_version: str = "0.9.0-alpha"
+    app_version: str = "1.0.0-alpha"
     environment: Literal["development", "production", "testing"] = "development"
     debug: bool = False
 
