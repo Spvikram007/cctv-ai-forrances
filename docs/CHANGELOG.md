@@ -351,4 +351,47 @@ DEPENDENCIES CHANGED: None (zero new external dependencies; Windows DPAPI access
 TESTS PERFORMED: Automated execution of 178 tests (143 regression tests + 35 new security, validation, resilience, and scale tests) covering DPAPI encryption roundtrip, random nonces, envelope versioning, tamper detection, key rotation, disaster recovery bundles, MobileFaceNet ONNX inference, L2 unit normalization, upper-body non-face rejection, genuine/impostor distribution evaluation, candidate match human verification semantics, ANPR CNN character classification, multi-condition synthetic datasets (day, night, motion blur, low-res, perspective tilt, multi-line plates), positional confusion disambiguation, RBAC access control permissions, retention policy enforcement, camera stream resilience (Hikvision, Dahua, CP PLUS, ONVIF), day/night transition, stream disconnect/reconnect, and multi-channel scale benchmarks up to 16 concurrent channels.  
 TEST RESULTS: 178 passed, 0 failed, 100% pass rate in 27.88s.  
 KNOWN ISSUES: None in Phase 7.1 scope.  
-GIT COMMIT: 8510aeb
+GIT COMMIT: 8510aeb  
+
+## [0.7.0-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-001  
+FEATURE ID: F-028, F-029, F-030, F-031, F-032  
+DATE: 2026-11-25  
+VERSION: 0.7.0-alpha  
+CHANGE TYPE: NEW FEATURE & PERFORMANCE ENHANCEMENT  
+DESCRIPTION: Implemented Phase 3 – Stream Polish & Universal PTZ Implementation. Delivered Universal PTZ control (F-028) supporting ONVIF Profile S/T continuous move with normalized velocity vectors, relative/absolute positioning, discrete stop commands, 8-way directional pan/tilt + zoom, preset creation/naming/navigation/deletion, home position recall/setting, vendor-specific adapters (Hikvision ISAPI continuous XML payloads, Dahua CGI ptz.cgi commands), graceful fallback for non-PTZ fixed cameras, non-blocking asynchronous dispatching (dispatch_async), and EventBus telemetry emissions (ptz.moved, ptz.stopped, etc.). Implemented Stream Reliability and Failover (F-029) including automatic reconnect with exponential backoff and randomized jitter to prevent reconnect storms, frozen frame detection via rapid downscaled (32x18) perceptual difference hashing, stale timestamp detection, corrupt frame/decoder error recovery, dynamic main-stream/substream switching without worker destruction, EventBus notifications (stream.disconnected, stream.recovered, stream.frozen, stream.switched), duplicate worker prevention, and rolling health event histories. Enhanced Live Monitoring (F-030) with dynamic surveillance grid supporting 1, 4, 9, 16, 25, 36, and 64 camera layouts (1x1 to 8x8) using lazy tile instantiation, double-click tile maximization and restoration, interactive digital zoom (1.0x to 5.0x) with mouse drag panning and reset badge, drag-and-drop camera channel assignment, status overlays ([REC], [AI], [PTZ], latency/FPS), visual snapshot flash feedback, integrated collapsible universal PTZ panel, multi-monitor detached video wall window (DetachedGridWindow), and keyboard navigation accelerators (1-7, Space, Escape). Implemented Camera Compatibility and Configuration (F-031) with ONVIF device profile inspection, RTSP URL validation and socket reachability testing, ONVIF system date and time synchronization, device/PTZ capability detection, stream URI retrieval, vendor-specific configuration, and multi-stage CameraConnectionTester. Implemented Stream Diagnostics (F-032) delivering real-time metrics (FPS, resolution, latency ms, packet loss %, reconnect count, decoder errors, frame drop rate %, queue utilization), per-camera structured diagnostics reports, and exportable diagnostics logs with credential masking. Bumped project version to 0.7.0-alpha. Full regression suite verified at 206 passing tests (100% pass rate).  
+FILES CREATED:  
+- `engines/video_engine/ptz_controller.py`
+- `docs/CAMERA_COMPATIBILITY_REPORT.md`
+- `docs/PERFORMANCE_REPORT_PHASE3.md`
+- `tests/unit/test_ptz_controller.py`
+- `tests/unit/test_stream_reliability.py`
+- `tests/integration/test_live_monitoring_phase3.py`
+- `tests/performance/test_stream_scale_64_channels.py`
+FILES MODIFIED:  
+- `VERSION`
+- `core/config/settings.py`
+- `engines/video_engine/rtsp_streamer.py`
+- `engines/video_engine/stream_manager.py`
+- `engines/video_engine/stream_metrics.py`
+- `integrations/onvif/client.py`
+- `integrations/generic_devices/base_adapter.py`
+- `integrations/hikvision/isapi_adapter.py`
+- `integrations/dahua/cgi_adapter.py`
+- `modules/live_monitoring/video_widget.py`
+- `modules/live_monitoring/live_view_widget.py`
+- `modules/camera_management/discovery_dialog.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/CHANGELOG.md`
+- `docs/ARCHITECTURE.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/TEST_REPORTS.md`
+FILES DELETED: None  
+DATABASE CHANGES: No structural database migrations required; runtime models and tables seamlessly support Phase 3 device telemetry and stream profiles.  
+DEPENDENCIES CHANGED: None (using existing PySide6, OpenCV, NumPy, cryptography, and Python standard libraries).  
+TESTS PERFORMED: Automated execution across 206 test cases (178 regression tests + 28 new Phase 3 tests) covering ONVIF capabilities, continuous/relative/absolute PTZ moves, stop, presets, home position, unsupported handling, ONVIF system time synchronization, universal controller thread dispatching, Hikvision/Dahua vendor adapters, RTSP URL validation, credential masking, exponential backoff with jitter, frozen frame perceptual difference detection and recovery, dynamic profile switching, camera connection tester, diagnostics reporting and export, 1-64 grid layout switching, tile maximization and restoration, interactive digital zoom and drag panning, drag-and-drop channel assignment, status overlays and badges, PTZ control widget interaction, multi-monitor detached video wall, keyboard shortcuts, and 1/4/16/64 stream scaling performance benchmarks.  
+TEST RESULTS: 206 passed, 0 failed, 100% pass rate in 31.15s.  
+KNOWN ISSUES: Physical 64-channel deployment requires network bandwidth validation; substream deployment is recommended for grids with >= 9 channels.  
+GIT COMMIT: aa15e2c

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal
 
 from integrations.onvif.discovery import CameraDiscoveryEngine, DiscoveredCamera
+from engines.video_engine.stream_manager import CameraConnectionTester, ConnectionTestReport
 from core.security.crypto import credential_vault
 from database.database_manager import db_manager
 from database.models.devices import Device, DeviceChannel, StreamProfile, DeviceCredential, DeviceStatus
@@ -151,10 +152,22 @@ class DeviceDiscoveryDialog(QDialog):
         f_layout.addWidget(QLabel("Password (Encrypted before storage):"))
         f_layout.addWidget(self.txt_man_pass)
 
+        btn_row_man = QHBoxLayout()
+        self.btn_test_conn = QPushButton("Test Connection")
+        self.btn_test_conn.setStyleSheet("background-color: #1f6feb; color: #ffffff;")
+        self.btn_test_conn.clicked.connect(self._test_manual_connection)
+        btn_row_man.addWidget(self.btn_test_conn)
+
         btn_save_man = QPushButton("Register Camera")
-        btn_save_man.setStyleSheet("background-color: #238636; color: #ffffff; margin-top: 10px;")
+        btn_save_man.setStyleSheet("background-color: #238636; color: #ffffff;")
         btn_save_man.clicked.connect(self._save_manual_camera)
-        f_layout.addWidget(btn_save_man)
+        btn_row_man.addWidget(btn_save_man)
+
+        f_layout.addLayout(btn_row_man)
+
+        self.lbl_test_result = QLabel("")
+        self.lbl_test_result.setStyleSheet("color: #8b949e; font-size: 11px;")
+        f_layout.addWidget(self.lbl_test_result)
 
         manual_layout.addWidget(form_frame)
         manual_layout.addStretch()
@@ -291,3 +304,33 @@ class DeviceDiscoveryDialog(QDialog):
         QMessageBox.information(self, "Success", f"Camera '{name}' registered successfully.")
         self.camera_registered.emit(dev.id)
         self.accept()
+
+    def _test_manual_connection(self) -> None:
+        ip = self.txt_man_ip.text().strip()
+        user = self.txt_man_user.text().strip()
+        pwd = self.txt_man_pass.text()
+
+        self.btn_test_conn.setEnabled(False)
+        self.lbl_test_result.setText("Testing connection...")
+
+        try:
+            report = CameraConnectionTester.test_camera(
+                ip_address=ip,
+                rtsp_port=554,
+                onvif_port=80,
+                username=user,
+                password=pwd,
+                timeout_sec=2.0,
+            )
+            if report.success:
+                txt = f"✓ Success! Latency: {report.latency_ms:.1f}ms | ONVIF: {report.onvif_reachable} | PTZ: {report.has_ptz}"
+                self.lbl_test_result.setStyleSheet("color: #238636; font-size: 11px;")
+                self.lbl_test_result.setText(txt)
+            else:
+                self.lbl_test_result.setStyleSheet("color: #f85149; font-size: 11px;")
+                self.lbl_test_result.setText(f"✗ Failed: {report.error_message or 'Host unreachable'}")
+        except Exception as e:
+            self.lbl_test_result.setStyleSheet("color: #f85149; font-size: 11px;")
+            self.lbl_test_result.setText(f"Error: {e}")
+        finally:
+            self.btn_test_conn.setEnabled(True)

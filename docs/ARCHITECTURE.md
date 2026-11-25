@@ -70,9 +70,14 @@ The database architecture employs an abstract repository model via SQLAlchemy 2.
 - Credential protection: Passwords, tokens, and RTSP authorization strings are scrubbed by a redacting logging formatter prior to output.
 - Role-Based Access Control (RBAC): Administrators, Supervisors, Operators, Investigators, and Viewers have granular permissions enforced at the controller and UI levels.
 
-### 3.4 Video Streaming Pipeline & Bounded Queues
-- **Decoupled Worker Architecture**: Each active camera channel runs an isolated `RTSPStreamWorker` thread. Decoding failures, network timeouts, or camera disconnects are handled through automated exponential backoff reconnection loops without impacting other streams or the Qt UI thread.
-- **Bounded Frame Buffer**: A thread-safe bounded double-ended queue (`deque(maxlen=30)`) is maintained per channel. Under network latency or processing lag, the queue automatically discards the oldest frame in $O(1)$ time, maintaining low latency and preventing memory bloat.
+### 3.4 Video Streaming Pipeline, Reliability & Dynamic Profile Switching
+- **Decoupled Worker Architecture**: Each active camera channel runs an isolated `RTSPStreamWorker` thread. Decoding failures, network timeouts, or camera disconnects are handled through automated exponential backoff reconnection loops with randomized jitter, preventing connection storms without impacting other streams or the Qt UI thread.
+- **Stream Reliability & Failover**:
+  - *Frozen Frame Detection*: Rapid perceptual difference hashing downsamples consecutive frames to $32 \times 18$ grayscale and calculates mean absolute pixel difference ($\le 0.5$ threshold). Frozen streams trigger automated worker reconnection and `stream.frozen` EventBus notifications.
+  - *Stale Timestamp Detection*: Detects decoder stalls when timestamp delta exceeds 5.0 seconds.
+  - *Corrupt Frame & Decoder Recovery*: Automatically recovers from consecutive frame decode errors with counter-based resets.
+  - *Dynamic Profile Switching*: Seamlessly switches between `MAIN` (full resolution for focus/recording) and `SUB` (low bitrate/resolution for multi-channel grids and AI inference) without restarting worker threads.
+- **Bounded Frame Buffer**: A thread-safe bounded double-ended queue (`deque(maxlen=30)` for main, `maxlen=5` for substreams) is maintained per channel. Under network latency or processing lag, the queue automatically discards the oldest frame in $O(1)$ time, maintaining low latency and preventing memory bloat.
 - **In-Memory Frame Transport**: Video frames are transported as native numpy ndarrays within the process space directly to `VideoTileWidget` (via `QPainter.drawImage`) and AI inference queues, strictly avoiding raw video serialization through JSON or IPC bottlenecks.
 
 ### 3.5 Camera Discovery Subsystem
@@ -80,9 +85,10 @@ The database architecture employs an abstract repository model via SQLAlchemy 2.
 - **Subnet IP Scanner**: Concurrently probes common surveillance ports (80, 554, 8000, 8080, 8899, 37777) across user-configurable CIDR blocks.
 - **MAC Resolution & Brand Fingerprinting**: Local ARP tables map discovered IPs to MAC addresses. MAC OUI prefixes and scope strings automatically identify Hikvision, Dahua, CP PLUS, Uniview, and Axis devices.
 
-### 3.6 ONVIF & Manufacturer Adapters
-- **Pure-Python ONVIF Client**: Implements WS-Security UsernameToken authentication with SHA-1 `PasswordDigest`, Nonce, and Created timestamps. Exposes `GetDeviceInformation`, `GetCapabilities`, `GetProfiles`, `GetStreamUri`, and Profile S/T PTZ continuous move/stop.
-- **NVR/DVR Adapters**: Dedicated HTTP/REST adapters for Hikvision ISAPI (`/ISAPI/ContentMgmt/InputProxy/channels`), Dahua CGI (`/cgi-bin/configManager.cgi`), and CP PLUS map recorder channels to individual camera streams.
+### 3.6 ONVIF, Manufacturer Adapters & Universal PTZ
+- **Pure-Python ONVIF Client**: Implements WS-Security UsernameToken authentication with SHA-1 `PasswordDigest`, Nonce, and Created timestamps. Exposes `GetDeviceInformation`, `GetCapabilities`, `GetProfiles`, `GetStreamUri`, Profile S/T PTZ continuous, relative, and absolute move, 8-directional pan/tilt + zoom, preset management (set, goto, get, remove), home position control, and ONVIF system date and time synchronization (`get_system_date_and_time`, `set_system_date_and_time`).
+- **NVR/DVR & Vendor Adapters**: Dedicated HTTP/REST adapters for Hikvision ISAPI (`/ISAPI/ContentMgmt/InputProxy/channels`, `/ISAPI/PTZCtrl/channels/{ch}/continuous`), Dahua CGI (`/cgi-bin/configManager.cgi`, `/cgi-bin/ptz.cgi`), and CP PLUS map recorder channels to individual camera streams and execute vendor-native PTZ commands.
+- **Connection Testing Interface (`CameraConnectionTester`)**: Multi-phase diagnostic tool testing TCP socket reachability, RTSP handshake validation, and ONVIF capability discovery prior to camera registration.
 
 ### 3.7 Local Credential Vault
 - **AES-256-GCM Encryption**: Device passwords and authentication credentials are encrypted using `CredentialVault` before being written to the database. Master keys are derived using PBKDF2HMAC (100,000 iterations) salted and bound to local machine hardware identity. Passwords are never stored or logged in plaintext.
@@ -133,3 +139,20 @@ The database architecture employs an abstract repository model via SQLAlchemy 2.
   - *Hardware-Backed Biometric Vault (`FaceBiometricVault`)*: Enforces native Windows Data Protection API (**Windows DPAPI**, `CryptProtectData` / `CryptUnprotectData` via `ctypes.windll.crypt32`) with custom application entropy. Generates random 256-bit AES master keys serialized into versioned envelopes (`v{ver}:{nonce_hex}:{ciphertext_tag_hex}`). Supports master key rotation (`rotate_biometric_keys`) archiving historical keys in an encrypted keystore, tamper detection via AEAD authentication tags, and disaster recovery bundles (`export_recovery_bundle`, `import_recovery_bundle`) encrypted via PBKDF2-HMAC-SHA256 (250,000 iterations) + AES-256-GCM.
   - *Biometric RBAC, Retention & Audit Trail (`FaceIntelligenceService`)*: Enforces 4-tier Role-Based Access Control (`ADMIN`, `SECURITY_OPERATOR`, `AUDITOR`, `VIEWER`), automated retention enforcement (`enforce_retention_policy`, default 30 days) to deactivate expired enrollments and purge old match events/snapshots from disk, and maintains immutable `biometric_audit_logs`.
   - *Surveillance Workspace Integration (`modules/anpr_intelligence`, `modules/face_intelligence`)*: PySide6 `ANPRWorkspaceWidget` mounted at stacked index 4 ('Investigation') and AI dashboard sub-tab; `FaceWorkspaceWidget` mounted in AI dashboard sub-tab.
+
+### 3.14 Universal PTZ, Multi-Layout Live Monitoring (1-64 Channels) & Stream Diagnostics
+- **Universal PTZ Controller (`engines/video_engine/ptz_controller.py`)**:
+  - *Unified Dispatcher*: Abstracts ONVIF Profile S/T, Hikvision ISAPI, Dahua CGI, and simulated devices behind a uniform API. Supports 8 directional vectors (`UP`, `DOWN`, `LEFT`, `RIGHT`, `UP_LEFT`, `UP_RIGHT`, `DOWN_LEFT`, `DOWN_RIGHT`), zoom in/out, and discrete stops.
+  - *Preset & Home Management*: Provides preset creation, naming, navigation, deletion, and home position return.
+  - *Asynchronous Non-Blocking Execution*: Dispatches PTZ network calls on background threads via `dispatch_async`, guaranteeing zero UI thread freezes during network timeouts. Emits telemetry events over `EventBus` (`ptz.moved`, `ptz.stopped`, `ptz.preset_saved`, etc.).
+- **Scalable 64-Channel Monitoring Grid (`modules/live_monitoring/live_view_widget.py`)**:
+  - *Layout Support*: Implements 1, 4, 9, 16, 25, 36, and 64 channel matrix layouts ($1 \times 1$ through $8 \times 8$). Employs lazy tile instantiation ensuring optimal startup performance and backward test compatibility.
+  - *Tile Maximization & Restoration*: Double-click tile maximization with single-key/double-click restoration to previous layout geometry.
+  - *Interactive Digital Zoom & Pan*: Mouse-wheel driven continuous zoom ($1.0\times$ to $5.0\times$) with left-click drag panning, bounding viewport clamping, and one-click reset badge.
+  - *Drag-and-Drop Camera Assignment*: Reassigns camera channels directly to video tiles using native Qt drag-and-drop.
+  - *Multi-Monitor Support*: `DetachedGridWindow` detaches the live view matrix into a standalone borderless or maximized window for dedicated multi-monitor security consoles.
+  - *Keyboard Accelerators*: Fast-switching shortcuts (keys `1` to `7` for 1 to 64 channel grids, `Space` to maximize/restore, `Escape` to reset zoom or maximize).
+- **Stream Diagnostics & Telemetry (`engines/video_engine/stream_metrics.py`, `stream_manager.py`)**:
+  - *Comprehensive Real-Time Metrics*: Measures active FPS, resolution, end-to-end latency, packet loss %, reconnect counters, decoder error counters, frame drop rates, and bounded queue utilization.
+  - *Rolling Health Event Log*: Maintains sliding event histories (`StreamHealthHistory`) with timestamped anomaly records.
+  - *Credential-Redacted Export*: Structured diagnostics logs (`export_diagnostics_log`) scrub credentials and RTSP passwords prior to export.

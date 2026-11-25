@@ -48,3 +48,11 @@ class BaseDeviceAdapter(ABC):
     def test_connection(self) -> Dict[str, Any]:
         """Tests device reachability and credentials."""
         pass
+
+    def ptz_supported(self) -> bool:
+        """Indicates if this device/adapter supports PTZ operations."""
+        return False
+
+    def ptz_control(self, channel: int, action: str, speed: int = 4) -> bool:
+        """Executes PTZ movement or stop command on specified channel."""
+        return False

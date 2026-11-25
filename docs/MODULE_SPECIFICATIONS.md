@@ -7,10 +7,11 @@
 - **Refresh Frequency**: 3000ms safe non-blocking Qt polling.
 
 ## Module 2: Live CCTV Monitoring (`modules/live_monitoring`)
-- **Status**: COMPLETE (Phase 1 & 2 Baseline)
+- **Status**: COMPLETE (Phase 1, 2 & Phase 3 Universal PTZ / Stream Polish)
 - **Role**: High-capacity multi-stream visual display and monitoring grid.
-- **Layouts**: 1, 4, 9, 16 camera grids implemented (scalable to 25, 36, 64).
-- **Features**: Live QPainter rendering, aspect ratio preservation, camera title overlay, status dot indicator, FPS and resolution telemetry, full-screen tile double-click maximization, local snapshot capture.
+- **Layouts**: 1, 4, 9, 16, 25, 36, and 64 camera grids implemented (1x1 to 8x8) with lazy on-demand tile allocation.
+- **Components**: `LiveViewWidget`, `VideoTileWidget`, `PTZControlWidget`, `DetachedGridWindow`.
+- **Features**: Live QPainter rendering, aspect ratio preservation, camera title overlay, status dot indicator (online, reconnecting, frozen, offline), FPS, resolution, and latency telemetry, full-screen tile double-click maximization and previous layout restoration, interactive digital zoom (1.0x-5.0x) with mouse wheel zooming, drag panning, and zoom reset badge, drag-and-drop camera assignment (`dragEnterEvent`/`dropEvent`), status overlays (`[REC]`, `[AI]`, `[PTZ]`), visual snapshot flash feedback, integrated collapsible universal PTZ panel, multi-monitor detached video wall window, keyboard navigation shortcuts (1-7 for layouts, Space to maximize, Escape to restore), right-click context menu (profile switching, PTZ panel toggle, zoom reset, snapshot), and rolling stream diagnostics.
 
 ## Module 3: Playback Engine (`modules/video_playback`, `engines/video_engine`)
 - **Status**: COMPLETE (Phase 4)
@@ -59,15 +60,19 @@
 - **Role**: Cryptographic integrity and tamper analysis.
 - **Checks**: SHA-256 chain of custody, frame discontinuity audit, duplicate frame detection, timestamp and compression anomaly inspection.
 
-## Module 11: Camera Integration (`integrations`)
-- **Status**: COMPLETE (Phase 1 & 2 Baseline)
-- **Role**: Hardware communication and discovery layer.
-- **Adapters**: ONVIF WS-Discovery (multicast UDP), ONVIF Profile S/T client (WS-Security PasswordDigest, PTZ ContinuousMove/Stop), Hikvision ISAPI adapter, Dahua CGI adapter, CP PLUS adapter, and generic RTSP streamer with bounded queue frame dropping.
+## Module 11: Camera Integration (`integrations`, `engines/video_engine`)
+- **Status**: COMPLETE (Phase 1, 2 & Phase 3 Universal PTZ / Stream Polish)
+- **Role**: Hardware communication, discovery layer, and universal PTZ control.
+- **Adapters**: ONVIF WS-Discovery (multicast UDP), ONVIF Profile S/T client (WS-Security PasswordDigest, continuous/relative/absolute move, 8-directional control + zoom, presets, home position, system date/time synchronization), Hikvision ISAPI adapter (PTZ continuous XML payloads), Dahua CGI adapter (PTZ continuous cgi commands), CP PLUS adapter, and generic RTSP streamer with bounded queue frame dropping.
+- **PTZ Components**: `PTZController`, `PTZCapabilities`, `PTZPreset`, `PTZDirection`, `PTZControlWidget`. Features 8-way directional pan/tilt, zoom in/out, configurable pan/tilt/zoom speeds, preset saving/naming/navigation/removal, home position setting/recall, asynchronous non-blocking thread dispatching, and EventBus telemetry (`ptz.moved`, `ptz.stopped`, `ptz.preset_saved`, `ptz.preset_reached`, `ptz.home_reached`).
+- **Compatibility Tools**: `CameraConnectionTester` for multi-stage connectivity validation (TCP socket reachability, RTSP handshake, ONVIF discovery probe), ONVIF system date and time synchronization (`get_system_date_and_time`, `set_system_date_and_time`), and credential protection.
 
-## Module 12: Network Intelligence (`modules/network_intelligence`)
-- **Status**: PLANNED (Phase 11)
-- **Role**: Surveillance network diagnostics.
-- **Tools**: Subnet IP scanner, MAC lookup, ONVIF discovery, RTSP port verification, latency/packet loss metrics.
+## Module 12: Network Intelligence & Stream Diagnostics (`modules/network_intelligence`, `engines/video_engine`)
+- **Status**: PARTIAL (Stream Diagnostics Engine COMPLETE in Phase 3; Network Tools PLANNED in Phase 11)
+- **Role**: Surveillance network diagnostics, stream health metrics, and automated failover.
+- **Components**: `StreamMetrics`, `StreamHealthHistory`, `StreamHealthEvent`, `StreamTelemetry`, `StreamManager`, `CameraConnectionTester`.
+- **Diagnostics Features**: Comprehensive real-time metrics (FPS, resolution, latency ms, packet loss %, reconnect count, decoder errors, frame drop rate %, queue utilization), frozen frame detection via rapid downscaled ($32 \times 18$) perceptual difference hashing, stale timestamp detection, corrupt frame recovery, dynamic mainstream/substream profile switching (`switch_stream_profile`), rolling health event logs, per-camera structured diagnostics reports (`get_diagnostics_report`), and exportable diagnostics logs with credential masking (`export_diagnostics_log`).
+- **Network Tools (Planned)**: Subnet IP scanner, MAC lookup, ONVIF discovery, RTSP port verification, latency/packet loss metrics.
 
 ## Module 13: Alarm Management (`modules/alarm_management`)
 - **Status**: PLANNED (Phase 12)

@@ -101,3 +101,36 @@ class HikvisionISAPIAdapter(BaseDeviceAdapter):
             total_channels=len(channels),
             channels=channels,
         )
+
+    def ptz_supported(self) -> bool:
+        return True
+
+    def ptz_control(self, channel: int, command: str, action: str = "start", speed: int = 4) -> bool:
+        """
+        Executes PTZ directional command via Hikvision ISAPI.
+        Commands: LEFT, RIGHT, UP, DOWN, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT, ZOOM_IN, ZOOM_OUT, STOP.
+        """
+        cmd_upper = command.upper()
+        if cmd_upper == "STOP":
+            pan, tilt, zoom = 0, 0, 0
+        else:
+            pan_val = speed if "RIGHT" in cmd_upper else (-speed if "LEFT" in cmd_upper else 0)
+            tilt_val = speed if "UP" in cmd_upper else (-speed if "DOWN" in cmd_upper else 0)
+            zoom_val = speed if "ZOOM_IN" in cmd_upper else (-speed if "ZOOM_OUT" in cmd_upper else 0)
+            pan, tilt, zoom = pan_val, tilt_val, zoom_val
+
+        body = f"""<?xml version="1.0" encoding="UTF-8"?>
+<PTZData>
+  <pan>{pan}</pan>
+  <tilt>{tilt}</tilt>
+  <zoom>{zoom}</zoom>
+</PTZData>"""
+        try:
+            url = f"{self.base_url}/PTZCtrl/channels/{channel}/continuous"
+            auth = httpx.DigestAuth(self.username, self.password)
+            with httpx.Client(timeout=self.timeout_sec) as client:
+                resp = client.put(url, content=body, auth=auth, headers={"Content-Type": "application/xml"})
+                return resp.status_code in (200, 204)
+        except Exception as e:
+            logger.warning("Hikvision PTZ control failed on [%s ch%d]: %s", self.ip_address, channel, e)
+            return False

@@ -88,3 +88,35 @@ class DahuaCGIAdapter(BaseDeviceAdapter):
             total_channels=len(channels),
             channels=channels,
         )
+
+    def ptz_supported(self) -> bool:
+        return True
+
+    def ptz_control(self, channel: int, command: str, action: str = "start", speed: int = 4) -> bool:
+        """
+        Executes PTZ movement via Dahua CGI ptz.cgi endpoint.
+        Commands: UP, DOWN, LEFT, RIGHT, ZOOM_IN, ZOOM_OUT, STOP.
+        """
+        cmd_map = {
+            "UP": "Up",
+            "DOWN": "Down",
+            "LEFT": "Left",
+            "RIGHT": "Right",
+            "ZOOM_IN": "ZoomAdd",
+            "ZOOM_OUT": "ZoomDec",
+        }
+        cmd_upper = command.upper()
+        if cmd_upper == "STOP":
+            cgi_action = "stop"
+            code = "Up"  # Dummy code for stop
+        else:
+            cgi_action = action
+            code = cmd_map.get(cmd_upper, "Up")
+
+        url = f"ptz.cgi?action={cgi_action}&channel={channel}&code={code}&arg1=0&arg2={speed}&arg3=0"
+        try:
+            resp_text = self._get(url)
+            return "OK" in resp_text or "true" in resp_text.lower()
+        except Exception as e:
+            logger.warning("Dahua PTZ control failed on [%s ch%d]: %s", self.ip_address, channel, e)
+            return False

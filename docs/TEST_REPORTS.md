@@ -1,16 +1,16 @@
 # Automated Test Execution Report
 
 ## Execution Summary
-- **Execution Date**: 2026-11-24
+- **Execution Date**: 2026-11-25
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 178
-- **Passed**: 178
+- **Total Test Cases**: 206
+- **Passed**: 206
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 27.88 seconds
+- **Total Duration**: 31.15 seconds
 
 ---
 
@@ -305,3 +305,39 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `test_sustained_channel_throughput[9]`: **PASSED** (0.07s) — 9 channels sustained throughput: 8.28 ms/channel.
 - `test_sustained_channel_throughput[16]`: **PASSED** (0.14s) — 16 channels sustained throughput: 8.51 ms/channel (64 AI ops/sec in 136.2 ms burst).
 - `test_memory_stability_under_sustained_workload`: **PASSED** (0.78s) — Validates memory stability over 100 sustained iterations (delta < 2.5 MB, budget < 40 MB).
+
+### 36. PTZ Controller & Universal Dispatch Suite (`tests/unit/test_ptz_controller.py`)
+- `test_onvif_ptz_capabilities`: **PASSED** (0.01s) — Validates ONVIF Profile S/T PTZ capabilities parsing (continuous, relative, absolute, presets, home).
+- `test_ptz_continuous_move_and_stop`: **PASSED** (0.01s) — Verifies continuous directional movement vectors (8 directions + zoom) and stop command dispatches.
+- `test_ptz_relative_and_absolute_move`: **PASSED** (0.01s) — Tests relative translation steps and absolute coordinate positioning.
+- `test_ptz_preset_management`: **PASSED** (0.01s) — Verifies preset creation, token generation, navigation (`goto`), listing, and removal.
+- `test_ptz_home_position`: **PASSED** (0.01s) — Tests setting and returning to designated PTZ home position.
+- `test_unsupported_ptz_handling`: **PASSED** (0.01s) — Validates graceful error handling and unsupported status for fixed cameras lacking PTZ motors.
+- `test_onvif_time_sync`: **PASSED** (0.01s) — Tests ONVIF system date and time retrieval and host-time synchronization.
+- `test_ptz_controller_universal_binding`: **PASSED** (0.02s) — Verifies PTZController universal binding, async non-blocking worker execution, and EventBus telemetry emissions.
+- `test_vendor_adapter_ptz`: **PASSED** (0.01s) — Tests Hikvision ISAPI XML payloads and Dahua CGI parameter formatting for pan/tilt/zoom/stop operations.
+
+### 37. Stream Reliability & Failover Suite (`tests/unit/test_stream_reliability.py`)
+- `test_rtsp_url_validation_and_credential_masking`: **PASSED** (0.00s) — Verifies RTSP URL syntax validation and password scrubbing in telemetry and loggers.
+- `test_reconnect_backoff_and_jitter`: **PASSED** (0.01s) — Validates exponential backoff progression with randomized jitter to prevent reconnect storms.
+- `test_frozen_frame_detection`: **PASSED** (0.01s) — Tests rapid perceptual difference hashing downsampling frames to 32x18 grayscale and detecting frozen video.
+- `test_frozen_frame_auto_recovery`: **PASSED** (0.01s) — Confirms frozen streams trigger automatic recovery reconnect cycles and EventBus alerts.
+- `test_dynamic_stream_profile_switching`: **PASSED** (0.02s) — Verifies on-the-fly switching between MAIN and SUB stream profiles without worker thread destruction.
+- `test_camera_connection_tester`: **PASSED** (0.02s) — Tests multi-phase connectivity testing (TCP reachability, RTSP handshake, ONVIF probe) with diagnostic results.
+- `test_stream_diagnostics_report_and_export`: **PASSED** (0.01s) — Tests structured per-channel diagnostics report generation and credential-masked JSON export.
+
+### 38. Live Monitoring Phase 3 Grid & Interactive Suite (`tests/integration/test_live_monitoring_phase3.py`)
+- `test_grid_layouts_1_to_64`: **PASSED** (0.05s) — Tests dynamic grid layout switching across 1, 4, 9, 16, 25, 36, and 64 channel matrix views with lazy tile allocation.
+- `test_double_click_tile_maximization_and_restore`: **PASSED** (0.03s) — Verifies double-click tile maximization and restoration back to original grid geometry.
+- `test_digital_zoom_and_pan`: **PASSED** (0.03s) — Tests interactive digital zoom (1.0x to 5.0x), viewport clamping, mouse drag panning, and zoom reset.
+- `test_drag_and_drop_camera_assignment`: **PASSED** (0.02s) — Verifies Qt drag-and-drop camera channel reassignment to video tiles.
+- `test_status_overlay_badges`: **PASSED** (0.02s) — Tests status overlay badges ([REC], [AI], [PTZ], latency/FPS) and frozen stream indicator dot.
+- `test_ptz_control_widget_interaction`: **PASSED** (0.02s) — Verifies PTZ control panel UI buttons, directional pad, speed sliders, preset dropdowns, and home button.
+- `test_detached_grid_window`: **PASSED** (0.02s) — Tests secondary multi-monitor detached video wall window instantiation and tile synchronization.
+- `test_keyboard_shortcuts`: **PASSED** (0.02s) — Verifies keyboard navigation accelerators (keys 1-7 for layouts, Space to maximize, Escape to restore).
+
+### 39. 64-Channel Scale & Stream Performance Suite (`tests/performance/test_stream_scale_64_channels.py`)
+- `test_sustained_stream_throughput_scale[1]`: **PASSED** (0.02s) — 1 channel sustained throughput: 25.0 FPS delivery, < 1 ms queue latency.
+- `test_sustained_stream_throughput_scale[4]`: **PASSED** (0.03s) — 4 channels sustained throughput: 100.0 FPS delivery, < 2 ms queue latency.
+- `test_sustained_stream_throughput_scale[16]`: **PASSED** (0.09s) — 16 channels sustained throughput: 400.0 FPS delivery, < 5 ms queue latency.
+- `test_64_channel_simulated_stream_distribution`: **PASSED** (0.38s) — 64 channels simulated concurrent frame distribution: 1600 FPS aggregate delivery, bounded queues, memory stability (< 1 GB RSS working set).
