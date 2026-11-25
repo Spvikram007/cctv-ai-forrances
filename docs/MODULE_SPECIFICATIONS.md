@@ -99,19 +99,19 @@
   - `NetworkIntelligenceWidget` (`modules/network_intelligence/network_workspace_widget.py`): PySide6 Command Center workspace mounted at Stacked Index 8 ('Network Tools'). Features summary stat cards, inventory table with real-time text/type filtering, interactive topology canvas, telemetry table (8 columns), CCTV diagnostics & fault panel, security audit & CVE viewer (9 columns with confidence badges), and CSV/JSON export. Fully asynchronous via dedicated `QThread` workers.
 
 ## Module 13: Alarm Management (`modules/alarm_management`, `engines/alarm_engine`)
-- **Status**: COMPLETE (Phase 12 - F-046 & F-020)
-- **Role**: Unified enterprise alarm processing layer: cross-subsystem event ingestion, normalization, thread-safe sliding-window deduplication, topological network root cause isolation, dynamic SLA escalation, service-layer RBAC, and PySide6 command center workspace.
+- **Status**: COMPLETE (Phase 12 & Phase 12.1 - F-046 & F-020)
+- **Role**: Unified enterprise alarm processing layer: cross-subsystem event ingestion across all 10 subsystems, normalization, persistent deduplication recovery, topological root cause isolation, dynamic SLA escalation with startup deadline recovery, rolling SHA-256 hash-chained audit trails (`verify_history_integrity`), sensitive biometric/ANPR feature vector stripping, evidence access RBAC auditing, service-layer RBAC, and PySide6 command center workspace.
 - **Components**:
-  - `AlarmEngineService` (`engines/alarm_engine/alarm_service.py`): Central coordinator with bounded async ingestion queue (`queue.Queue(maxsize=10000)`), background worker thread, SLA watchdog thread, 6-state lifecycle state machine (`NEW`, `ACKNOWLEDGED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `REOPENED`), and service-layer RBAC authorization.
-  - `AlarmEventBusAdapter` (`engines/alarm_engine/adapters.py`): Cross-platform EventBus subscriber routing 12 event topics from Analytics, AI, ANPR, Face, Streams, Network, Storage, and Forensics.
-  - `EventNormalizer` (`engines/alarm_engine/normalizer.py`): Canonical `NormalizedAlarmEvent` contract with parsed evidence references (snapshots, segment IDs, bounding boxes, plate text, identities, evidence IDs).
-  - `AlarmPolicyEngine` (`engines/alarm_engine/policy_engine.py`): Security, safety, hardware, and network classification rules, default SLA timeouts, and camera-specific policy overrides.
-  - `AlarmDeduplicator` (`engines/alarm_engine/deduplicator.py`): Thread-safe in-memory sliding-window duplicate consolidation with atomic occurrence count incrementation and event ledger logging.
+  - `AlarmEngineService` (`engines/alarm_engine/alarm_service.py`): Central coordinator with bounded async ingestion queue (`queue.Queue(maxsize=10000)`), background worker thread, SLA watchdog thread, rolling SHA-256 hash chaining on `alarm_history`, `verify_history_integrity()`, `audit_evidence_access()`, 6-state lifecycle state machine (`NEW`, `ACKNOWLEDGED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `REOPENED`), and service-layer RBAC authorization.
+  - `AlarmEventBusAdapter` (`engines/alarm_engine/adapters.py`): Cross-platform EventBus subscriber routing 15 event topics from Analytics, AI, ANPR, Face, Streams, Camera, Recording, Storage, Network, and Forensics.
+  - `EventNormalizer` (`engines/alarm_engine/normalizer.py`): Canonical `NormalizedAlarmEvent` contract with parsed evidence references; automatically strips raw 512-d feature vectors from metadata and labels candidate matches as `UNCONFIRMED_CANDIDATE_MATCH`.
+  - `AlarmPolicyEngine` (`engines/alarm_engine/policy_engine.py`): Security, safety, hardware, operational, and forensic classification rules, default SLA timeouts, and camera-specific policy overrides.
+  - `AlarmDeduplicator` (`engines/alarm_engine/deduplicator.py`): Thread-safe hybrid cache and DB-backed deduplicator with startup recovery (`recover_from_database`), persistent DB fallback, and atomic SQL occurrence count increment.
   - `AlarmCorrelator` (`engines/alarm_engine/correlator.py`): Causal network outage root-cause isolation and camera stream recovery auto-clearing.
-  - `AlarmEscalationManager` (`engines/alarm_engine/escalator.py`): Persistent SLA deadline tracking and automated tier advancement (Tier 0 to Tier 3) with audit logging.
-  - `AlarmNotificationDispatcher` (`engines/alarm_engine/notification.py`): Multi-channel dispatcher for in-app tickers, desktop popups, and audio chimes with cooldown suppression.
+  - `AlarmEscalationManager` (`engines/alarm_engine/escalator.py`): Persistent SLA deadline tracking, startup recovery (`recover_pending_escalations`), and automated tier advancement (capped at Tier 3 with duplicate suppression).
+  - `AlarmNotificationDispatcher` (`engines/alarm_engine/notification.py`): Non-blocking multi-channel dispatcher for in-app tickers, desktop popups, and audio chimes with cooldown suppression.
   - `AlarmManagementWidget` (`modules/alarm_management/alarm_workspace_widget.py`): PySide6 Command Center mounted at View 9 with 5 operational tabs (Incident Monitor, Detail & Evidence, Policy Administration, SLA & Shift Metrics, Live Event Simulator), 6 KPI cards, synchronized playback seek (View 2), and CSV export.
-  - `Alarm Models` (`database/models/alarms.py`): 6 relational tables (`alarms`, `alarm_events`, `alarm_history`, `alarm_policies`, `alarm_assignments`, `alarm_notifications`).
+  - `Alarm Models` (`database/models/alarms.py`): 6 relational tables (`alarms`, `alarm_events`, `alarm_history`, `alarm_policies`, `alarm_assignments`, `alarm_notifications`) with composite indexes (`idx_alarm_dedup_status`, `idx_alarm_deadline_status`, `idx_alarm_status_sev_time`).
 
 ## Module 14: Recording & Storage (`engines/recording_engine`)
 - **Status**: COMPLETE (Phase 4)

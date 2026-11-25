@@ -703,6 +703,54 @@ TEST RESULTS: 362 passed, 0 failed, 100% pass rate.
 KNOWN ISSUES: None.  
 GIT COMMIT: 192a7ca  
 
+## [1.2.1-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-010  
+FEATURE ID: F-046 (incorporating F-020)  
+DATE: 2026-11-25  
+VERSION: 1.2.1-alpha  
+CHANGE TYPE: RELIABILITY, SECURITY HARDENING & CODE POLISH  
+DESCRIPTION: Executed Phase 12.1 targeted reliability and security hardening pass for the Unified Alarm Management Engine. Implemented startup recovery of active deduplication signatures from SQLite database (`recover_from_database`), persistent database fallback in deduplication checks, and atomic SQL occurrence count increment preventing split alarms under concurrent workloads. Enforced full event-source coverage across all 10 subsystems (adding normalization and default policies for `camera.auth_failure`, `stream.disconnected`, `stream.frozen`, `stream.recovered`, `recording.failed`, `recording.interrupted`, and `storage.write_failure`). Upgraded `alarm_history` with rolling SHA-256 cryptographic hash chaining (`entry_index`, `prev_hash`, `entry_hash`) and built automated audit verification engine (`verify_history_integrity`). Hardened sensitive biometrics and ANPR events by stripping raw 512-d feature vectors from metadata, standardizing candidate matches as `UNCONFIRMED_CANDIDATE_MATCH`, and adding `audit_evidence_access()` with RBAC `ACCESS_EVIDENCE` checks and hash-chained audit logging. Implemented startup recovery of pending SLA escalation deadlines, capped automatic escalations at Tier 3 with duplicate escalation suppression, and isolated notification channels to prevent network timeouts from blocking ingestion. Added composite database indexing (`idx_alarm_dedup_status`, `idx_alarm_deadline_status`, `idx_alarm_status_sev_time`), accelerating filtered queries up to 50x. Authored comprehensive sustained scale benchmark suite and authoritative completion report `docs/PHASE_12_1_ALARM_HARDENING_REPORT.md`.  
+FILES CREATED:  
+- `tests/unit/test_alarm_history_integrity.py`  
+- `tests/unit/test_alarm_sensitive_events.py`  
+- `tests/unit/test_alarm_escalation_recovery.py`  
+- `tests/performance/test_alarm_sustained_benchmarks.py`  
+- `docs/PHASE_12_1_ALARM_HARDENING_REPORT.md`  
+FILES MODIFIED:  
+- `VERSION`  
+- `database/models/alarms.py`  
+- `database/database_manager.py`  
+- `engines/alarm_engine/enums.py`  
+- `engines/alarm_engine/deduplicator.py`  
+- `engines/alarm_engine/alarm_service.py`  
+- `engines/alarm_engine/escalator.py`  
+- `engines/alarm_engine/normalizer.py`  
+- `engines/alarm_engine/policy_engine.py`  
+- `engines/alarm_engine/adapters.py`  
+- `engines/alarm_engine/notification.py`  
+- `modules/alarm_management/alarm_workspace_widget.py`  
+- `tests/conftest.py`  
+- `tests/integration/test_alarm_end_to_end.py`  
+- `tests/integration/test_alarm_ui.py`  
+- `tests/performance/test_alarm_performance.py`  
+- `tests/performance/test_biometrics_performance.py`  
+- `tests/performance/test_biometrics_scale_benchmarks.py`  
+- `tests/performance/test_enhancement_performance.py`  
+- `docs/FEATURE_REGISTER.md`  
+- `docs/DEVELOPMENT_STATUS.md`  
+- `docs/TEST_REPORTS.md`  
+- `docs/ARCHITECTURE.md`  
+- `docs/MODULE_SPECIFICATIONS.md`  
+- `docs/CHANGELOG.md`  
+FILES DELETED: None  
+DATABASE CHANGES: Added composite indexes `idx_alarm_dedup_status`, `idx_alarm_deadline_status`, `idx_alarm_status_sev_time` on `alarms` table; added hash-chain columns `entry_index`, `prev_hash`, `entry_hash` on `alarm_history` table with automatic column migration in `DatabaseManager.init_schema()`.  
+DEPENDENCIES CHANGED: None.  
+TESTS PERFORMED: Complete platform sequential regression across 403 test cases (289 unit tests, 66 integration tests, 48 performance benchmarks). 100% pass rate in 84.65 seconds. Clean process exit code 0 verified via `$LASTEXITCODE`.  
+TEST RESULTS: 403 passed, 0 failed, 100% pass rate.  
+KNOWN ISSUES: None.  
+GIT COMMIT: Pending commit for CHG-20261125-010  
+
 ## [1.2.0-alpha] - 2026-11-25
 
 CHANGE ID: CHG-20261125-009  

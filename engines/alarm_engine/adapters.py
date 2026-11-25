@@ -36,6 +36,10 @@ class AlarmEventBusAdapter:
             "stream.frozen": self._on_stream_frozen,
             "network.fault_detected": self._on_network_fault,
             "network.security_alert": self._on_network_security,
+            "camera.auth_failure": self._on_camera_auth_failure,
+            "recording.failed": self._on_recording_failed,
+            "recording.interrupted": self._on_recording_interrupted,
+            "storage.write_failure": self._on_storage_write_failure,
             "storage.volume_critical": self._on_storage_critical,
             "storage.volume_low": self._on_storage_low,
             "forensic.integrity_failure": self._on_forensic_failure,
@@ -106,6 +110,22 @@ class AlarmEventBusAdapter:
     def _on_storage_low(self, event: Event) -> None:
         data = event.data if isinstance(event.data, dict) else {"payload": event.data}
         alarm_service.enqueue_event("STORAGE", "VOLUME_LOW", data)
+
+    def _on_camera_auth_failure(self, event: Event) -> None:
+        data = event.data if isinstance(event.data, dict) else {"payload": event.data}
+        alarm_service.enqueue_event("CAMERA", "AUTH_FAILURE", data)
+
+    def _on_recording_failed(self, event: Event) -> None:
+        data = event.data if isinstance(event.data, dict) else {"payload": event.data}
+        alarm_service.enqueue_event("RECORDING", "FAILED", data)
+
+    def _on_recording_interrupted(self, event: Event) -> None:
+        data = event.data if isinstance(event.data, dict) else {"payload": event.data}
+        alarm_service.enqueue_event("RECORDING", "INTERRUPTED", data)
+
+    def _on_storage_write_failure(self, event: Event) -> None:
+        data = event.data if isinstance(event.data, dict) else {"payload": event.data}
+        alarm_service.enqueue_event("STORAGE", "WRITE_FAILURE", data)
 
     def _on_forensic_failure(self, event: Event) -> None:
         data = event.data if isinstance(event.data, dict) else {"payload": event.data}

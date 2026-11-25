@@ -959,9 +959,22 @@ class AlarmManagementWidget(QWidget):
         self._teardown_event_listeners()
         super().closeEvent(event)
 
+    def closeEvent(self, event) -> None:
+        """Ensures background event listeners are detached when widget closes."""
+        self._teardown_event_listeners()
+        super().closeEvent(event)
+
     def _setup_event_listeners(self) -> None:
         """Subscribes to live platform alarm events to update dashboard in real time."""
-        self._event_handler = lambda event: QTimer.singleShot(0, self.refresh_data) if self.isVisible() else None
+        def _handler(event):
+            try:
+                from shiboken6 import isValid
+                if isValid(self) and hasattr(self, "isVisible") and self.isVisible():
+                    QTimer.singleShot(0, self.refresh_data)
+            except Exception:
+                pass
+
+        self._event_handler = _handler
         bus.subscribe("alarm.created", self._event_handler)
         bus.subscribe("alarm.acknowledged", self._event_handler)
         bus.subscribe("alarm.resolved", self._event_handler)

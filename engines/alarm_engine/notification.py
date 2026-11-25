@@ -67,23 +67,32 @@ class AlarmNotificationDispatcher:
 
         # 1. In-App Notification (Always publish to EventBus for UI widgets)
         if "IN_APP" in active_channels:
-            bus.publish("alarm.notification", payload, source="alarm_engine")
-            dispatched_channels.append("IN_APP")
+            try:
+                bus.publish("alarm.notification", payload, source="alarm_engine")
+                dispatched_channels.append("IN_APP")
+            except Exception as e:
+                logger.error("Failed to publish in-app notification: %s", e)
 
         # 2. Audio Chime (Check cooldown suppression)
         if "AUDIO" in active_channels and severity in ("CRITICAL", "HIGH", "MEDIUM"):
             if self.should_notify(alarm_id, "AUDIO"):
-                chime_type = "URGENT" if severity == "CRITICAL" else ("WARNING" if severity == "HIGH" else "NOTICE")
-                bus.publish("alarm.audio_chime", {"alarm_id": alarm_id, "chime_type": chime_type, "severity": severity}, source="alarm_engine")
-                dispatched_channels.append("AUDIO")
+                try:
+                    chime_type = "URGENT" if severity == "CRITICAL" else ("WARNING" if severity == "HIGH" else "NOTICE")
+                    bus.publish("alarm.audio_chime", {"alarm_id": alarm_id, "chime_type": chime_type, "severity": severity}, source="alarm_engine")
+                    dispatched_channels.append("AUDIO")
+                except Exception as e:
+                    logger.error("Failed to publish audio chime notification: %s", e)
 
         # 3. Desktop Notification (Check cooldown suppression)
         if "DESKTOP" in active_channels:
             if self.should_notify(alarm_id, "DESKTOP"):
-                bus.publish("alarm.desktop_popup", payload, source="alarm_engine")
-                dispatched_channels.append("DESKTOP")
+                try:
+                    bus.publish("alarm.desktop_popup", payload, source="alarm_engine")
+                    dispatched_channels.append("DESKTOP")
+                except Exception as e:
+                    logger.error("Failed to publish desktop popup notification: %s", e)
 
-        # Persist notification log
+        # Persist notification log (guaranteed non-blocking)
         try:
             with db_manager.get_session() as session:
                 for ch in dispatched_channels:

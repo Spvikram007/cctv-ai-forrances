@@ -5,12 +5,13 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 356
-- **Passed**: 356
+- **Total Test Cases**: 403
+- **Passed**: 403
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 49.38 seconds
+- **Total Duration**: 84.65 seconds
+- **Process Exit Code**: 0 verified via `$LASTEXITCODE`
 
 ---
 

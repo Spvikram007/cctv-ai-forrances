@@ -46,6 +46,7 @@ DEFAULT_POLICIES = [
     EffectiveAlarmPolicy("Theft / Object Removed", "BEHAVIOUR", "REMOVED_OBJECT", AlarmSeverity.HIGH, AlarmPriority.P2_HIGH, dedup_window_seconds=60, escalation_timeout_seconds=180),
     EffectiveAlarmPolicy("ANPR Watchlist Match", "ANPR", "WATCHLIST_ALERT", AlarmSeverity.HIGH, AlarmPriority.P1_URGENT, dedup_window_seconds=60, escalation_timeout_seconds=120),
     EffectiveAlarmPolicy("Face Candidate Match", "FACE", "CANDIDATE_MATCH", AlarmSeverity.MEDIUM, AlarmPriority.P2_HIGH, dedup_window_seconds=60, escalation_timeout_seconds=300),
+    EffectiveAlarmPolicy("Camera Auth Failure", "CAMERA", "AUTH_FAILURE", AlarmSeverity.HIGH, AlarmPriority.P2_HIGH, dedup_window_seconds=60, escalation_timeout_seconds=300),
     
     # Safety
     EffectiveAlarmPolicy("Human Fall Detected", "BEHAVIOUR", "FALL_DETECTED", AlarmSeverity.HIGH, AlarmPriority.P1_URGENT, dedup_window_seconds=30, escalation_timeout_seconds=120),
@@ -61,6 +62,9 @@ DEFAULT_POLICIES = [
     EffectiveAlarmPolicy("Network Bandwidth Congestion", "NETWORK", "BANDWIDTH_CONGESTION", AlarmSeverity.MEDIUM, AlarmPriority.P3_NORMAL, dedup_window_seconds=180, escalation_timeout_seconds=600),
     EffectiveAlarmPolicy("Storage Volume Critical", "STORAGE", "VOLUME_CRITICAL", AlarmSeverity.CRITICAL, AlarmPriority.P1_URGENT, dedup_window_seconds=300, escalation_timeout_seconds=120),
     EffectiveAlarmPolicy("Storage Volume Warning", "STORAGE", "VOLUME_LOW", AlarmSeverity.MEDIUM, AlarmPriority.P3_NORMAL, dedup_window_seconds=600, escalation_timeout_seconds=1800),
+    EffectiveAlarmPolicy("Storage Write Failure", "STORAGE", "WRITE_FAILURE", AlarmSeverity.CRITICAL, AlarmPriority.P1_URGENT, dedup_window_seconds=60, escalation_timeout_seconds=120),
+    EffectiveAlarmPolicy("Recording Engine Failure", "RECORDING", "FAILED", AlarmSeverity.CRITICAL, AlarmPriority.P1_URGENT, dedup_window_seconds=60, escalation_timeout_seconds=120),
+    EffectiveAlarmPolicy("Recording Interrupted", "RECORDING", "INTERRUPTED", AlarmSeverity.HIGH, AlarmPriority.P2_HIGH, dedup_window_seconds=60, escalation_timeout_seconds=300),
     
     # Forensics
     EffectiveAlarmPolicy("Forensic Tamper Failure", "FORENSICS", "INTEGRITY_FAILURE", AlarmSeverity.CRITICAL, AlarmPriority.P1_URGENT, dedup_window_seconds=60, escalation_timeout_seconds=120),

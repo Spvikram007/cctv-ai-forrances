@@ -7,7 +7,7 @@ operator assignments, and notification delivery records.
 """
 
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Float, Boolean, Text, DateTime
+from sqlalchemy import Column, String, Integer, Float, Boolean, Text, DateTime, Index
 from database.models.base import Base
 
 
@@ -48,6 +48,12 @@ class Alarm(Base):
     alarm_metadata = Column(Text, nullable=True)  # JSON-encoded metadata payload
     dedup_key = Column(String(255), nullable=True, index=True)
 
+    __table_args__ = (
+        Index("idx_alarm_dedup_status", "dedup_key", "status"),
+        Index("idx_alarm_deadline_status", "next_escalation_deadline", "status"),
+        Index("idx_alarm_status_sev_time", "status", "severity", "last_detected_at"),
+    )
+
 
 class AlarmEvent(Base):
     """
@@ -72,10 +78,12 @@ class AlarmHistory(Base):
     """
     Append-only lifecycle audit trail recording every state change, note,
     assignment, escalation, and resolution for forensic traceability.
+    Secured with rolling SHA-256 hash chains.
     """
     __tablename__ = "alarm_history"
 
     alarm_id = Column(String(36), nullable=False, index=True)
+    entry_index = Column(Integer, nullable=False, default=0)
     previous_status = Column(String(20), nullable=True)
     new_status = Column(String(20), nullable=False)
     operator = Column(String(100), nullable=False)
@@ -83,6 +91,8 @@ class AlarmHistory(Base):
     action = Column(String(50), nullable=False, index=True)
     reason = Column(String(255), nullable=True)
     comments = Column(Text, nullable=True)
+    prev_hash = Column(String(64), nullable=True)
+    entry_hash = Column(String(64), nullable=True)
 
 
 class AlarmPolicy(Base):

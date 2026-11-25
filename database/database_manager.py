@@ -88,6 +88,30 @@ class DatabaseManager:
             raise RuntimeError("Database engine is not initialized.")
         logger.info("Verifying and creating database schema for backend [%s]...", self.active_backend)
         Base.metadata.create_all(bind=self.engine)
+
+        # Automatic lightweight migration for schema additions (e.g. SQLite missing column/index upgrades)
+        try:
+            with self.engine.begin() as conn:
+                if self.active_backend == "sqlite":
+                    cursor = conn.connection.cursor()
+                    cursor.execute("PRAGMA table_info(alarm_history)")
+                    existing_cols = {row[1] for row in cursor.fetchall()}
+                    if existing_cols:
+                        if "entry_index" not in existing_cols:
+                            conn.execute(text("ALTER TABLE alarm_history ADD COLUMN entry_index INTEGER DEFAULT 0"))
+                        if "prev_hash" not in existing_cols:
+                            conn.execute(text("ALTER TABLE alarm_history ADD COLUMN prev_hash VARCHAR(64)"))
+                        if "entry_hash" not in existing_cols:
+                            conn.execute(text("ALTER TABLE alarm_history ADD COLUMN entry_hash VARCHAR(64)"))
+                    cursor.close()
+
+                    # Ensure composite indexes exist
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_alarm_dedup_status ON alarms (dedup_key, status)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_alarm_deadline_status ON alarms (next_escalation_deadline, status)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_alarm_status_sev_time ON alarms (status, severity, last_detected_at)"))
+        except Exception as e:
+            logger.debug("Schema migration notice: %s", e)
+
         logger.info("Database schema verification completed successfully.")
 
     @contextmanager

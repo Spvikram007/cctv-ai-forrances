@@ -9,6 +9,7 @@ import pytest
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 from modules.alarm_management.alarm_workspace_widget import AlarmManagementWidget
 from engines.alarm_engine.alarm_service import alarm_service
@@ -51,8 +52,14 @@ def test_alarm_management_widget_lifecycle(qapp):
     widget.refresh_data()
     assert widget.table_alarms.rowCount() >= 1
 
-    # Select first row
-    widget.table_alarms.selectRow(0)
+    # Find and select the test alarm row
+    target_row = 0
+    for r in range(widget.table_alarms.rowCount()):
+        item = widget.table_alarms.item(r, 0)
+        if item and item.data(Qt.UserRole) == alarm_id:
+            target_row = r
+            break
+    widget.table_alarms.selectRow(target_row)
     assert widget._selected_alarm_id is not None
 
     # Check Detail labels updated
@@ -71,6 +78,7 @@ def test_alarm_management_widget_lifecycle(qapp):
 
     # Clean shutdown
     widget.close()
+    widget._teardown_event_listeners()
     widget.deleteLater()
     qapp.processEvents()
 

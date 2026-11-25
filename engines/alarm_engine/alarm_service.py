@@ -1,15 +1,16 @@
 """
 Central Alarm Engine Service.
-Phase 12 (F-046, Change ID: CHG-20261125-009).
+Phase 12 & 12.1 (F-046, Change ID: CHG-20261125-010).
 
 Coordinates event ingestion, normalization, policy evaluation, deduplication,
 correlation, persistent database transactions, SLA escalations, notifications,
-and RBAC lifecycle state machine.
+cryptographically-chained audit trails, and RBAC lifecycle state machine.
 """
 
 import json
 import time
 import queue
+import hashlib
 import threading
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timezone, timedelta
@@ -67,6 +68,7 @@ class AlarmEngineService:
         self.notification_dispatcher = AlarmNotificationDispatcher(suppression_cooldown_sec=30.0)
 
         # Thread-safe bounded asynchronous event ingestion queue
+        self._stop_event = threading.Event()
         self._ingestion_queue: queue.Queue = queue.Queue(maxsize=max_queue_size)
         self._worker_running = True
         self._worker_thread = threading.Thread(target=self._process_queue_loop, daemon=True, name="AlarmIngestionWorker")
@@ -76,13 +78,37 @@ class AlarmEngineService:
         self._watchdog_thread = threading.Thread(target=self._escalation_watchdog_loop, daemon=True, name="AlarmSLAWatchdog")
         self._watchdog_thread.start()
 
+        # Recover active deduplication signatures and pending SLA escalations on startup
+        try:
+            with db_manager.get_session() as session:
+                recovered_dedup = self.deduplicator.recover_from_database(session)
+                recovered_esc = self.escalator.recover_pending_escalations(session=session)
+                logger.info(
+                    "Startup recovery complete: %d active deduplication signatures, %d pending SLA escalations",
+                    recovered_dedup,
+                    len(recovered_esc),
+                )
+        except Exception as e:
+            logger.debug("Startup alarm recovery note: %s", e)
+
     def stop(self) -> None:
         """Gracefully shuts down background worker threads."""
         self._worker_running = False
+        self._stop_event.set()
         try:
             self._ingestion_queue.put_nowait(None)
         except Exception:
             pass
+        if hasattr(self, "_worker_thread") and self._worker_thread.is_alive():
+            try:
+                self._worker_thread.join(timeout=1.0)
+            except Exception:
+                pass
+        if hasattr(self, "_watchdog_thread") and self._watchdog_thread.is_alive():
+            try:
+                self._watchdog_thread.join(timeout=1.0)
+            except Exception:
+                pass
 
     def enqueue_event(self, source_subsystem: str, event_type: str, data: Dict[str, Any]) -> bool:
         """
@@ -109,13 +135,17 @@ class AlarmEngineService:
             except queue.Empty:
                 continue
             except Exception as e:
-                logger.error("Error processing queued alarm event: %s", e)
+                try:
+                    logger.error("Error processing queued alarm event: %s", e)
+                except Exception:
+                    pass
 
     def _escalation_watchdog_loop(self) -> None:
         """Periodic background evaluation of SLA deadlines every 10 seconds."""
         while self._worker_running:
             try:
-                time.sleep(10.0)
+                if self._stop_event.wait(timeout=10.0):
+                    break
                 if not self._worker_running:
                     break
                 escalated = self.escalator.check_and_escalate_pending_alarms()
@@ -124,6 +154,99 @@ class AlarmEngineService:
                     bus.publish("alarm.escalated", {"alarm_id": alarm_id}, source="alarm_escalator")
             except Exception as e:
                 logger.debug("Escalation watchdog exception: %s", e)
+
+    # -------------------------------------------------------------------------
+    # Cryptographic Hash Chaining Helpers
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def _format_timestamp(ts: Any) -> str:
+        """Standardizes timestamps to UTC string format across aware and naive SQLite models."""
+        if isinstance(ts, datetime):
+            if ts.tzinfo is not None:
+                ts = ts.astimezone(timezone.utc).replace(tzinfo=None)
+            return ts.strftime("%Y-%m-%d %H:%M:%S.%f")
+        return str(ts)
+
+    @classmethod
+    def compute_history_hash(
+        cls,
+        entry_index: int,
+        alarm_id: str,
+        prev_hash: str,
+        previous_status: Optional[str],
+        new_status: str,
+        operator: str,
+        action: str,
+        timestamp: Any,
+        reason: Optional[str],
+        comments: Optional[str],
+    ) -> str:
+        """Computes deterministic SHA-256 rolling digest for alarm audit history entry."""
+        ts_str = cls._format_timestamp(timestamp)
+        canonical = (
+            f"{entry_index}|{alarm_id}|{prev_hash}|{previous_status or ''}|"
+            f"{new_status}|{operator}|{action}|{ts_str}|{reason or ''}|{comments or ''}"
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def _append_history_entry(
+        self,
+        session: Any,
+        alarm_id: str,
+        previous_status: Optional[str],
+        new_status: str,
+        operator: str,
+        action: str,
+        timestamp: Optional[datetime] = None,
+        reason: Optional[str] = None,
+        comments: Optional[str] = None,
+    ) -> AlarmHistory:
+        """
+        Appends an immutable, sequentially-indexed, hash-chained audit record.
+        Maintains an unbroken cryptographic link across all lifecycle events.
+        """
+        now = timestamp or datetime.now(timezone.utc)
+        last_entry = (
+            session.query(AlarmHistory)
+            .filter(AlarmHistory.alarm_id == alarm_id)
+            .order_by(AlarmHistory.entry_index.desc())
+            .first()
+        )
+        if last_entry is None:
+            entry_index = 0
+            prev_hash = "0" * 64
+        else:
+            entry_index = (last_entry.entry_index or 0) + 1
+            prev_hash = last_entry.entry_hash or ("0" * 64)
+
+        entry_hash = self.compute_history_hash(
+            entry_index=entry_index,
+            alarm_id=alarm_id,
+            prev_hash=prev_hash,
+            previous_status=previous_status,
+            new_status=new_status,
+            operator=operator,
+            action=action,
+            timestamp=now,
+            reason=reason,
+            comments=comments,
+        )
+
+        history = AlarmHistory(
+            alarm_id=alarm_id,
+            entry_index=entry_index,
+            previous_status=previous_status,
+            new_status=new_status,
+            operator=operator,
+            timestamp=now,
+            action=action,
+            reason=reason,
+            comments=comments,
+            prev_hash=prev_hash,
+            entry_hash=entry_hash,
+        )
+        session.add(history)
+        return history
 
     # -------------------------------------------------------------------------
     # Ingestion & Normalization
@@ -139,7 +262,7 @@ class AlarmEngineService:
 
     def process_normalized_event(self, event: NormalizedAlarmEvent) -> str:
         """
-        Evaluates policy, checks deduplication, correlates with parent incidents,
+        Evaluates policy, checks deduplication with DB fallback, correlates with parent incidents,
         persists Alarm and AlarmEvent records, and dispatches notifications.
         """
         policy = self.policy_engine.get_policy(event.source_subsystem, event.event_type)
@@ -147,12 +270,21 @@ class AlarmEngineService:
             logger.debug("Event %s dropped: Policy disabled", event.event_type)
             return ""
 
-        # Check deduplication
+        # Fast in-memory deduplication check first
         dedup_window = policy.dedup_window_seconds
         is_dup, existing_alarm_id, occurrence_count = self.deduplicator.check_and_update(
             dedup_key=event.dedup_key or "",
             window_seconds=dedup_window,
+            session=None,
         )
+        if not is_dup and event.dedup_key:
+            # Fallback to persistent database check only if not matched in memory
+            with db_manager.get_session() as session:
+                is_dup, existing_alarm_id, occurrence_count = self.deduplicator.check_and_update(
+                    dedup_key=event.dedup_key,
+                    window_seconds=dedup_window,
+                    session=session,
+                )
 
         if is_dup and existing_alarm_id:
             # Update existing active alarm
@@ -203,7 +335,7 @@ class AlarmEngineService:
         policy: Any,
         related_alarm_id: Optional[str] = None,
     ) -> str:
-        """Persists a new Alarm, AlarmEvent, and initial AlarmHistory entry."""
+        """Persists a new Alarm, AlarmEvent, and initial AlarmHistory entry with cryptographic hash chain."""
         now = datetime.now(timezone.utc)
         deadline = now + timedelta(seconds=policy.escalation_timeout_seconds) if policy.escalation_timeout_seconds > 0 else None
 
@@ -248,8 +380,9 @@ class AlarmEngineService:
             )
             session.add(alarm_event)
 
-            # Record creation audit trail
-            history = AlarmHistory(
+            # Record creation audit trail with rolling hash chain
+            self._append_history_entry(
+                session=session,
                 alarm_id=new_alarm.id,
                 previous_status=None,
                 new_status=AlarmStatus.NEW.value,
@@ -259,10 +392,12 @@ class AlarmEngineService:
                 reason="Event normalized and ingested",
                 comments=f"Created from {event.source_subsystem}:{event.event_type}",
             )
-            session.add(history)
             alarm_id = str(new_alarm.id)
 
-        logger.info("Created new alarm %s [%s] - Severity: %s", alarm_id, event.title, event.severity.value)
+        try:
+            logger.info("Created new alarm %s [%s] - Severity: %s", alarm_id, event.title, event.severity.value)
+        except Exception:
+            pass
         bus.publish("alarm.created", {"alarm_id": alarm_id, "title": event.title, "severity": event.severity.value}, source="alarm_engine")
         return alarm_id
 
@@ -272,28 +407,29 @@ class AlarmEngineService:
         event: NormalizedAlarmEvent,
         occurrence_count: int,
     ) -> None:
-        """Updates last detected timestamp and occurrence counter for duplicate bursts."""
+        """Updates last detected timestamp and occurrence counter for duplicate bursts using atomic SQL."""
         now = datetime.now(timezone.utc)
         with db_manager.get_session() as session:
-            alarm = session.query(Alarm).filter(Alarm.id == alarm_id).first()
-            if alarm:
-                alarm.last_detected_at = event.timestamp
-                alarm.occurrence_count = occurrence_count
-                
-                # Append raw event
-                alarm_event = AlarmEvent(
-                    alarm_id=alarm.id,
-                    source_event_id=event.event_id,
-                    source_subsystem=event.source_subsystem,
-                    event_type=event.event_type,
-                    camera_id=event.camera_id,
-                    event_timestamp=event.timestamp,
-                    received_timestamp=now,
-                    confidence=event.confidence,
-                    event_metadata=json.dumps(event.metadata) if event.metadata else None,
-                    processing_status="DUPLICATE_MERGED",
-                )
-                session.add(alarm_event)
+            # Atomic SQL increment to avoid lost updates under concurrent workers
+            session.query(Alarm).filter(Alarm.id == alarm_id).update({
+                Alarm.last_detected_at: event.timestamp,
+                Alarm.occurrence_count: Alarm.occurrence_count + 1,
+            }, synchronize_session=False)
+
+            # Append raw event
+            alarm_event = AlarmEvent(
+                alarm_id=alarm_id,
+                source_event_id=event.event_id,
+                source_subsystem=event.source_subsystem,
+                event_type=event.event_type,
+                camera_id=event.camera_id,
+                event_timestamp=event.timestamp,
+                received_timestamp=now,
+                confidence=event.confidence,
+                event_metadata=json.dumps(event.metadata) if event.metadata else None,
+                processing_status="DUPLICATE_MERGED",
+            )
+            session.add(alarm_event)
 
     # -------------------------------------------------------------------------
     # Lifecycle Transitions & RBAC Actions
@@ -323,7 +459,8 @@ class AlarmEngineService:
             # Once acknowledged, clear acknowledgment SLA deadline
             alarm.next_escalation_deadline = None
 
-            history = AlarmHistory(
+            self._append_history_entry(
+                session=session,
                 alarm_id=alarm.id,
                 previous_status=prev_status,
                 new_status=AlarmStatus.ACKNOWLEDGED.value,
@@ -333,7 +470,6 @@ class AlarmEngineService:
                 reason="Operator acknowledged incident",
                 comments=comments or "Acknowledged by operator",
             )
-            session.add(history)
 
         self.deduplicator.update_status(alarm_id, AlarmStatus.ACKNOWLEDGED.value)
         bus.publish("alarm.acknowledged", {"alarm_id": alarm_id, "operator": operator}, source="alarm_engine")
@@ -368,7 +504,8 @@ class AlarmEngineService:
             )
             session.add(assignment)
 
-            history = AlarmHistory(
+            self._append_history_entry(
+                session=session,
                 alarm_id=alarm.id,
                 previous_status=alarm.status,
                 new_status=alarm.status,
@@ -378,7 +515,6 @@ class AlarmEngineService:
                 reason=f"Assigned to {assigned_user}",
                 comments=reason,
             )
-            session.add(history)
 
         bus.publish("alarm.assigned", {"alarm_id": alarm_id, "assigned_user": assigned_user}, source="alarm_engine")
         logger.info("Alarm %s assigned to %s by %s", alarm_id, assigned_user, operator)
@@ -400,7 +536,8 @@ class AlarmEngineService:
             if not alarm.assigned_operator:
                 alarm.assigned_operator = operator
 
-            history = AlarmHistory(
+            self._append_history_entry(
+                session=session,
                 alarm_id=alarm.id,
                 previous_status=prev_status,
                 new_status=AlarmStatus.IN_PROGRESS.value,
@@ -410,7 +547,6 @@ class AlarmEngineService:
                 reason="Investigation commenced",
                 comments=comments or "Investigation in progress",
             )
-            session.add(history)
 
         self.deduplicator.update_status(alarm_id, AlarmStatus.IN_PROGRESS.value)
         bus.publish("alarm.in_progress", {"alarm_id": alarm_id, "operator": operator}, source="alarm_engine")
@@ -441,7 +577,8 @@ class AlarmEngineService:
             alarm.resolved_by = operator
             alarm.next_escalation_deadline = None
 
-            history = AlarmHistory(
+            self._append_history_entry(
+                session=session,
                 alarm_id=alarm.id,
                 previous_status=prev_status,
                 new_status=AlarmStatus.RESOLVED.value,
@@ -451,7 +588,6 @@ class AlarmEngineService:
                 reason=reason,
                 comments=comments,
             )
-            session.add(history)
 
         self.deduplicator.update_status(alarm_id, AlarmStatus.RESOLVED.value)
         if cam_id:
@@ -483,7 +619,8 @@ class AlarmEngineService:
             alarm.closed_by = operator
             alarm.next_escalation_deadline = None
 
-            history = AlarmHistory(
+            self._append_history_entry(
+                session=session,
                 alarm_id=alarm.id,
                 previous_status=prev_status,
                 new_status=AlarmStatus.CLOSED.value,
@@ -493,7 +630,6 @@ class AlarmEngineService:
                 reason="Closed after review",
                 comments=comments or "Case closed",
             )
-            session.add(history)
 
         self.deduplicator.update_status(alarm_id, AlarmStatus.CLOSED.value)
         bus.publish("alarm.closed", {"alarm_id": alarm_id, "operator": operator}, source="alarm_engine")
@@ -521,7 +657,8 @@ class AlarmEngineService:
             alarm.status = AlarmStatus.REOPENED.value
             alarm.next_escalation_deadline = now + timedelta(seconds=300)
 
-            history = AlarmHistory(
+            self._append_history_entry(
+                session=session,
                 alarm_id=alarm.id,
                 previous_status=prev_status,
                 new_status=AlarmStatus.REOPENED.value,
@@ -531,7 +668,6 @@ class AlarmEngineService:
                 reason=reason,
                 comments=comments,
             )
-            session.add(history)
 
         self.deduplicator.update_status(alarm_id, AlarmStatus.REOPENED.value)
         bus.publish("alarm.reopened", {"alarm_id": alarm_id, "operator": operator}, source="alarm_engine")
@@ -554,7 +690,8 @@ class AlarmEngineService:
             if not alarm:
                 return False
 
-            history = AlarmHistory(
+            self._append_history_entry(
+                session=session,
                 alarm_id=alarm.id,
                 previous_status=alarm.status,
                 new_status=alarm.status,
@@ -564,7 +701,6 @@ class AlarmEngineService:
                 reason="Operator observation",
                 comments=note_text.strip(),
             )
-            session.add(history)
 
         bus.publish("alarm.note_added", {"alarm_id": alarm_id, "operator": operator}, source="alarm_engine")
         return True
@@ -589,7 +725,8 @@ class AlarmEngineService:
             alarm.escalated_at = now
             alarm.next_escalation_deadline = now + timedelta(seconds=600)
 
-            history = AlarmHistory(
+            self._append_history_entry(
+                session=session,
                 alarm_id=alarm.id,
                 previous_status=alarm.status,
                 new_status=alarm.status,
@@ -599,10 +736,116 @@ class AlarmEngineService:
                 reason=reason,
                 comments=f"Manual escalation by {operator} to Level {alarm.escalation_level}",
             )
-            session.add(history)
 
         bus.publish("alarm.escalated", {"alarm_id": alarm_id, "operator": operator}, source="alarm_engine")
         return True
+
+    def audit_evidence_access(
+        self,
+        alarm_id: str,
+        operator: str,
+        role: str = "INVESTIGATOR",
+        evidence_type: str = "SNAPSHOT",
+        comments: str = "",
+    ) -> bool:
+        """
+        Enforces RBAC permissions and records an immutable, hash-chained audit record
+        whenever sensitive biometric or ANPR evidence is accessed or viewed.
+        """
+        self._validate_permission(role, "ACCESS_EVIDENCE")
+        now = datetime.now(timezone.utc)
+        with db_manager.get_session() as session:
+            alarm = session.query(Alarm).filter(Alarm.id == alarm_id, Alarm.is_deleted == False).first()
+            if not alarm:
+                return False
+
+            self._append_history_entry(
+                session=session,
+                alarm_id=alarm.id,
+                previous_status=alarm.status,
+                new_status=alarm.status,
+                operator=operator,
+                action=AlarmAction.EVIDENCE_VIEWED.value,
+                timestamp=now,
+                reason=f"Evidence access ({evidence_type})",
+                comments=comments or f"Operator {operator} ({role}) inspected {evidence_type} evidence",
+            )
+
+        bus.publish("alarm.evidence_accessed", {
+            "alarm_id": alarm_id,
+            "operator": operator,
+            "role": role,
+            "evidence_type": evidence_type,
+        }, source="alarm_engine")
+        logger.info("Evidence access audited for alarm %s by %s (%s)", alarm_id, operator, role)
+        return True
+
+    def verify_history_integrity(self, alarm_id: str) -> Dict[str, Any]:
+        """
+        Cryptographically verifies the rolling SHA-256 hash chain of an alarm's audit history.
+        Detects any tampering, record alterations, omissions, or reordering.
+        """
+        with db_manager.get_session() as session:
+            entries = (
+                session.query(AlarmHistory)
+                .filter(AlarmHistory.alarm_id == alarm_id, AlarmHistory.is_deleted == False)
+                .order_by(AlarmHistory.entry_index.asc(), AlarmHistory.timestamp.asc())
+                .all()
+            )
+            if not entries:
+                return {
+                    "valid": True,
+                    "total_entries": 0,
+                    "broken_at_index": None,
+                    "details": "No audit trail entries recorded.",
+                }
+
+            expected_prev_hash = "0" * 64
+            for idx, entry in enumerate(entries):
+                if entry.entry_index != idx:
+                    return {
+                        "valid": False,
+                        "total_entries": len(entries),
+                        "broken_at_index": idx,
+                        "details": f"Index discontinuity: expected index {idx}, found {entry.entry_index}.",
+                    }
+
+                if entry.prev_hash != expected_prev_hash:
+                    return {
+                        "valid": False,
+                        "total_entries": len(entries),
+                        "broken_at_index": idx,
+                        "details": f"Hash chain linkage broken at index {idx}: expected prev_hash {expected_prev_hash}, found {entry.prev_hash}.",
+                    }
+
+                recomputed = self.compute_history_hash(
+                    entry_index=entry.entry_index,
+                    alarm_id=entry.alarm_id,
+                    prev_hash=entry.prev_hash,
+                    previous_status=entry.previous_status,
+                    new_status=entry.new_status,
+                    operator=entry.operator,
+                    action=entry.action,
+                    timestamp=entry.timestamp,
+                    reason=entry.reason,
+                    comments=entry.comments,
+                )
+                if entry.entry_hash != recomputed:
+                    return {
+                        "valid": False,
+                        "total_entries": len(entries),
+                        "broken_at_index": idx,
+                        "details": f"Cryptographic digest mismatch at index {idx}: stored {entry.entry_hash}, recomputed {recomputed}.",
+                    }
+
+                expected_prev_hash = entry.entry_hash
+
+            return {
+                "valid": True,
+                "total_entries": len(entries),
+                "broken_at_index": None,
+                "details": f"Cryptographic integrity successfully verified across all {len(entries)} audit entries.",
+            }
 
     # -------------------------------------------------------------------------
     # Queries & Dashboard Metrics
@@ -705,19 +948,23 @@ class AlarmEngineService:
             entries = (
                 session.query(AlarmHistory)
                 .filter(AlarmHistory.alarm_id == alarm_id, AlarmHistory.is_deleted == False)
-                .order_by(AlarmHistory.timestamp.asc())
+                .order_by(AlarmHistory.entry_index.asc(), AlarmHistory.timestamp.asc())
                 .all()
             )
             return [
                 {
                     "id": e.id,
+                    "alarm_id": e.alarm_id,
+                    "entry_index": e.entry_index,
                     "previous_status": e.previous_status,
                     "new_status": e.new_status,
                     "operator": e.operator,
-                    "timestamp": e.timestamp.isoformat(),
+                    "timestamp": e.timestamp.isoformat() if hasattr(e.timestamp, "isoformat") else str(e.timestamp),
                     "action": e.action,
                     "reason": e.reason,
                     "comments": e.comments,
+                    "prev_hash": e.prev_hash,
+                    "entry_hash": e.entry_hash,
                 }
                 for e in entries
             ]
@@ -728,32 +975,21 @@ class AlarmEngineService:
             now = datetime.now(timezone.utc)
             today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
 
-            total_active = session.query(func.count(Alarm.id)).filter(
+            # Query active alarms in a single query
+            active_rows = session.query(
+                Alarm.status,
+                Alarm.severity,
+                Alarm.escalation_level
+            ).filter(
                 Alarm.status.in_([AlarmStatus.NEW.value, AlarmStatus.ACKNOWLEDGED.value, AlarmStatus.IN_PROGRESS.value, AlarmStatus.REOPENED.value]),
                 Alarm.is_deleted == False,
-            ).scalar() or 0
+            ).all()
 
-            critical_count = session.query(func.count(Alarm.id)).filter(
-                Alarm.status.in_([AlarmStatus.NEW.value, AlarmStatus.ACKNOWLEDGED.value, AlarmStatus.IN_PROGRESS.value, AlarmStatus.REOPENED.value]),
-                Alarm.severity == AlarmSeverity.CRITICAL.value,
-                Alarm.is_deleted == False,
-            ).scalar() or 0
-
-            unack_count = session.query(func.count(Alarm.id)).filter(
-                Alarm.status == AlarmStatus.NEW.value,
-                Alarm.is_deleted == False,
-            ).scalar() or 0
-
-            in_progress_count = session.query(func.count(Alarm.id)).filter(
-                Alarm.status == AlarmStatus.IN_PROGRESS.value,
-                Alarm.is_deleted == False,
-            ).scalar() or 0
-
-            escalated_count = session.query(func.count(Alarm.id)).filter(
-                Alarm.status.in_([AlarmStatus.NEW.value, AlarmStatus.ACKNOWLEDGED.value, AlarmStatus.IN_PROGRESS.value, AlarmStatus.REOPENED.value]),
-                Alarm.escalation_level > 0,
-                Alarm.is_deleted == False,
-            ).scalar() or 0
+            total_active = len(active_rows)
+            critical_count = sum(1 for r in active_rows if r[1] == AlarmSeverity.CRITICAL.value)
+            unack_count = sum(1 for r in active_rows if r[0] == AlarmStatus.NEW.value)
+            in_progress_count = sum(1 for r in active_rows if r[0] == AlarmStatus.IN_PROGRESS.value)
+            escalated_count = sum(1 for r in active_rows if (r[2] or 0) > 0)
 
             resolved_today = session.query(func.count(Alarm.id)).filter(
                 Alarm.status.in_([AlarmStatus.RESOLVED.value, AlarmStatus.CLOSED.value]),
@@ -761,15 +997,11 @@ class AlarmEngineService:
                 Alarm.is_deleted == False,
             ).scalar() or 0
 
-            # Severity distribution
-            sev_counts = {}
-            for sev in AlarmSeverity:
-                c = session.query(func.count(Alarm.id)).filter(
-                    Alarm.status.in_([AlarmStatus.NEW.value, AlarmStatus.ACKNOWLEDGED.value, AlarmStatus.IN_PROGRESS.value, AlarmStatus.REOPENED.value]),
-                    Alarm.severity == sev.value,
-                    Alarm.is_deleted == False,
-                ).scalar() or 0
-                sev_counts[sev.value] = c
+            # Severity distribution from queried active alarms
+            sev_counts = {sev.value: 0 for sev in AlarmSeverity}
+            for r in active_rows:
+                if r[1] in sev_counts:
+                    sev_counts[r[1]] += 1
 
             return {
                 "total_active": total_active,

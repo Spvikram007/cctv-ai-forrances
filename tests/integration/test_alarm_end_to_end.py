@@ -7,6 +7,7 @@ and full lifecycle resolution.
 """
 
 import time
+import uuid
 import threading
 from datetime import datetime, timezone
 import pytest
@@ -92,7 +93,7 @@ def test_e2e_stream_disconnect_and_deduplication_burst():
     Verifies that the deduplicator merges them into a single active alarm
     with occurrence_count = 20 rather than generating 20 separate alarms.
     """
-    cam_id = "cam_traffic_junction"
+    cam_id = f"cam_traffic_{uuid.uuid4().hex[:6]}"
 
     # Fire 20 rapid disconnect events
     for _ in range(20):
