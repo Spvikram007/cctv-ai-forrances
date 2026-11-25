@@ -394,4 +394,44 @@ DEPENDENCIES CHANGED: None (using existing PySide6, OpenCV, NumPy, cryptography,
 TESTS PERFORMED: Automated execution across 206 test cases (178 regression tests + 28 new Phase 3 tests) covering ONVIF capabilities, continuous/relative/absolute PTZ moves, stop, presets, home position, unsupported handling, ONVIF system time synchronization, universal controller thread dispatching, Hikvision/Dahua vendor adapters, RTSP URL validation, credential masking, exponential backoff with jitter, frozen frame perceptual difference detection and recovery, dynamic profile switching, camera connection tester, diagnostics reporting and export, 1-64 grid layout switching, tile maximization and restoration, interactive digital zoom and drag panning, drag-and-drop channel assignment, status overlays and badges, PTZ control widget interaction, multi-monitor detached video wall, keyboard shortcuts, and 1/4/16/64 stream scaling performance benchmarks.  
 TEST RESULTS: 206 passed, 0 failed, 100% pass rate in 31.15s.  
 KNOWN ISSUES: Physical 64-channel deployment requires network bandwidth validation; substream deployment is recommended for grids with >= 9 channels.  
-GIT COMMIT: aa15e2c
+GIT COMMIT: d1338c7
+
+## [0.8.0-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-002  
+FEATURE ID: F-035, F-036, F-037, F-038, F-039  
+DATE: 2026-11-25  
+VERSION: 0.8.0-alpha  
+CHANGE TYPE: NEW FEATURE & ANALYTICS ENHANCEMENT  
+DESCRIPTION: Implemented Phase 8 – Advanced Behaviour Analytics. Delivered Crowd Density and Occupancy Estimation (F-035) with single-linkage spatial clustering, calibrated surface area density (warning 3.0 people/m², critical 5.0 people/m²), 10.0s persistence filtering to eliminate transient spikes, and cluster distribution telemetry. Implemented Stationary, Abandoned and Removed Object Detection (F-036) tracking stationary candidates, associating depositing persons as owners, monitoring owner separation distance (> 3.0m) and duration (>= 30.0s) for unattended alerts, stationary dwell (>= 60.0s) for abandoned object alerts, and missing object confirmation (>= 5.0s) for theft/removal alerts. Implemented Human Fall Detection and Posture Analysis (F-037) combining rapid downward vertical descent velocity (window <= 1.5s, delta_y >= 0.08), aspect-ratio inversion (w/h >= 1.2), prone dwell confirmation (>= 3.0s), composite confidence scoring, and mandatory human review workflows with explicit AI suspicion disclaimers. Implemented Directional Trajectory and Wrong-Way Movement Detection (F-038) calculating heading angles [0°, 360°), circular wrap-around angular deviation tolerance (+-30°), minimum trajectory displacement filtering (1.5m / 0.05 norm) for stationary jitter rejection, and sustained wrong-way travel confirmation (>= 2.0s). Implemented Advanced Behaviour Rule Engine and Visual Canvas (F-039) providing composite multi-condition rule evaluation with Boolean AND/OR logic, rule scheduling, duplicate alert suppression (30.0s), interactive PySide6 BehaviourAnalyticsWidget with drawing canvas for crowd zones and directional flow arrows, real-time metrics cards, and operator incident verification / false-positive dismissal workflows. Full regression suite verified at 243 passing tests (100% pass rate in 31.89s).  
+FILES CREATED:  
+- `engines/analytics_engine/behaviour_detectors.py`
+- `modules/ai_intelligence/behaviour_analytics_widget.py`
+- `docs/BEHAVIOUR_ANALYTICS_VERIFICATION_REPORT.md`
+- `tests/unit/test_behaviour_geometry.py`
+- `tests/unit/test_crowd_density.py`
+- `tests/unit/test_stationary_abandoned_objects.py`
+- `tests/unit/test_fall_detection.py`
+- `tests/unit/test_directional_wrong_way.py`
+- `tests/unit/test_behaviour_rule_manager.py`
+- `tests/integration/test_behaviour_pipeline.py`
+- `tests/performance/test_behaviour_scale_benchmarks.py`
+FILES MODIFIED:  
+- `VERSION`
+- `core/config/settings.py`
+- `engines/analytics_engine/geometry.py`
+- `engines/analytics_engine/analytics_pipeline.py`
+- `modules/ai_intelligence/ai_dashboard_widget.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/CHANGELOG.md`
+- `docs/ARCHITECTURE.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/TEST_REPORTS.md`
+FILES DELETED: None  
+DATABASE CHANGES: No structural table alterations required; relational schema `analytics_rules` and `analytics_events` dynamically persist all new behaviour rule configurations, event types, and structured evidence JSON manifests.  
+DEPENDENCIES CHANGED: None (using existing PySide6, OpenCV, NumPy, and Python standard libraries).  
+TESTS PERFORMED: Automated execution across 243 test cases (206 regression tests + 37 new Phase 8 tests) covering Euclidean distance, trajectory heading angles, circular wrap-around angle differences, polygon area, aspect ratio inversion, spatial clustering, crowd density thresholds, 10s persistence filtering, stationary object dwell, owner association and separation distance/duration, unattended alerts, abandoned object alerts, removed object confirmation, rapid downward descent velocity, prone dwell confirmation, false positive rejection (walking, sitting, bending), wrong-way trajectory heading, corridor tolerance boundaries (+-30°), stationary jitter suppression, composite AND/OR rules, schedule filtering, channel isolation, pipeline integration, occlusion resilience, camera disconnect/reconnect, day/night transitions, UI smoke testing, and multi-channel scale benchmarks up to 64 concurrent channels.  
+TEST RESULTS: 243 passed, 0 failed, 100% pass rate in 31.89s.  
+KNOWN ISSUES: Calibrated scene area (m²) is recommended for optimal crowd density accuracy; fall detection requires human verification review.  
+GIT COMMIT: 1e6942e

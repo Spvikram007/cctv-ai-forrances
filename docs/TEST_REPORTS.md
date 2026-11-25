@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 206
-- **Passed**: 206
+- **Total Test Cases**: 243
+- **Passed**: 243
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 31.15 seconds
+- **Total Duration**: 31.89 seconds
 
 ---
 
@@ -341,3 +341,56 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `test_sustained_stream_throughput_scale[4]`: **PASSED** (0.03s) — 4 channels sustained throughput: 100.0 FPS delivery, < 2 ms queue latency.
 - `test_sustained_stream_throughput_scale[16]`: **PASSED** (0.09s) — 16 channels sustained throughput: 400.0 FPS delivery, < 5 ms queue latency.
 - `test_64_channel_simulated_stream_distribution`: **PASSED** (0.38s) — 64 channels simulated concurrent frame distribution: 1600 FPS aggregate delivery, bounded queues, memory stability (< 1 GB RSS working set).
+
+### 40. Behaviour Geometry Utilities Suite (`tests/unit/test_behaviour_geometry.py`)
+- `test_euclidean_distance`: **PASSED** (0.00s) — Validates Euclidean distance calculations in 2D image coordinates.
+- `test_trajectory_heading_angle`: **PASSED** (0.00s) — Tests heading angles [0.0, 360.0) across all cardinal and diagonal directions.
+- `test_angular_difference_wrap_around`: **PASSED** (0.00s) — Verifies shortest angular difference calculations handling circular wrap-around at 0°/360°.
+- `test_polygon_area_shoelace`: **PASSED** (0.00s) — Validates polygon area computations using Shoelace formula (Green's theorem).
+- `test_box_aspect_ratio_inversion`: **PASSED** (0.00s) — Tests bounding box width/height ratio distinguishing upright (< 0.8) from prone (> 1.2) postures.
+- `test_cluster_points_single_linkage`: **PASSED** (0.00s) — Validates spatial clustering and centroid calculations for crowd groups.
+
+### 41. Crowd Density & Occupancy Suite (`tests/unit/test_crowd_density.py`)
+- `test_crowd_density_normal_level`: **PASSED** (0.00s) — Verifies normal crowd density below warning threshold produces no alerts.
+- `test_crowd_density_warning_level_and_persistence`: **PASSED** (0.01s) — Validates warning threshold (> 3.0 people/m²), 10s persistence filtering, and duplicate alert suppression.
+- `test_crowd_density_critical_level`: **PASSED** (0.01s) — Tests critical density threshold (> 5.0 people/m²) triggering CRITICAL severity alerts.
+- `test_crowd_density_spatial_clustering`: **PASSED** (0.00s) — Verifies spatial grouping of people into distinct cluster centroids.
+
+### 42. Stationary & Abandoned Objects Suite (`tests/unit/test_stationary_abandoned_objects.py`)
+- `test_owner_association_and_separation_unattended_alert`: **PASSED** (0.01s) — Tests owner proximity association and unattended alert when owner separates > 3m for >= 30s.
+- `test_abandoned_object_dwell_trigger`: **PASSED** (0.01s) — Validates abandoned object alert triggering after stationary dwell >= 60s.
+- `test_removed_object_confirmation_trigger`: **PASSED** (0.01s) — Tests removed object / theft alert when stationary item disappears for >= 5s.
+- `test_moving_object_resets_stationary_dwell`: **PASSED** (0.00s) — Confirms object movement resets stationary dwell timers.
+
+### 43. Fall Detection & Posture Analysis Suite (`tests/unit/test_fall_detection.py`)
+- `test_fall_detection_rapid_descent_and_prone_confirmation`: **PASSED** (0.01s) — Tests rapid downward descent velocity, aspect ratio inversion, prone dwell confirmation (>= 3s), and human review requirement.
+- `test_fall_detection_rejects_normal_walking`: **PASSED** (0.00s) — False-positive rejection verifying normal walking does not trigger fall alerts.
+- `test_fall_detection_rejects_gentle_sitting`: **PASSED** (0.00s) — False-positive rejection verifying sitting down on a chair does not trigger prone fall alarms.
+- `test_fall_detection_rejects_transient_bending_or_shoe_tying`: **PASSED** (0.00s) — False-positive rejection verifying temporary bending does not satisfy prone dwell.
+
+### 44. Directional Trajectory & Wrong-Way Suite (`tests/unit/test_directional_wrong_way.py`)
+- `test_wrong_way_detection_and_confirmation_window`: **PASSED** (0.01s) — Tests trajectory heading angle, tolerance deviation (+-30°), and 2.0s confirmation window.
+- `test_allowed_direction_no_alert`: **PASSED** (0.00s) — Confirms travel in permitted direction generates no alerts.
+- `test_stationary_jitter_suppressed`: **PASSED** (0.00s) — Verifies displacement filtering suppresses stationary track jitter.
+
+### 45. Behaviour Rule Manager & Composite Suite (`tests/unit/test_behaviour_rule_manager.py`)
+- `test_composite_rule_and_operator`: **PASSED** (0.01s) — Validates composite rules requiring both conditions (Crowd AND Wrong-Way) to be met simultaneously.
+- `test_composite_rule_or_operator`: **PASSED** (0.01s) — Validates composite rules triggering when either condition (Fall OR Abandoned Object) is met.
+- `test_behaviour_rule_schedule_filtering`: **PASSED** (0.00s) — Verifies day-of-week and time-window schedule filters.
+- `test_multi_camera_channel_isolation`: **PASSED** (0.01s) — Confirms strict per-channel isolation between CAM-01 and CAM-02.
+- `test_detector_reset`: **PASSED** (0.00s) — Validates state reset across all behaviour detectors.
+
+### 46. Behaviour Pipeline & UI Integration Suite (`tests/integration/test_behaviour_pipeline.py`)
+- `test_pipeline_behaviour_end_to_end`: **PASSED** (0.02s) — Tests end-to-end CameraAnalyticsPipeline frame processing with synthetic video.
+- `test_occlusion_and_tracking_loss_resilience`: **PASSED** (0.02s) — Validates detector state preservation across transient occlusion and tracking drops.
+- `test_camera_disconnect_and_reconnect`: **PASSED** (0.01s) — Tests pipeline reset and recovery upon camera stream disconnects.
+- `test_day_night_transition_resilience`: **PASSED** (0.01s) — Verifies sudden illumination transitions do not trigger false positive alarms.
+- `test_behaviour_analytics_ui_smoke`: **PASSED** (0.04s) — Tests PySide6 BehaviourAnalyticsWidget initialization, live event receipt, and human verification actions.
+
+### 47. Behaviour Scale Benchmarks Suite (`tests/performance/test_behaviour_scale_benchmarks.py`)
+- `test_behaviour_multi_channel_throughput[1]`: **PASSED** (0.02s) — 1 channel: 0.18 ms/eval.
+- `test_behaviour_multi_channel_throughput[4]`: **PASSED** (0.04s) — 4 channels: 0.19 ms/eval.
+- `test_behaviour_multi_channel_throughput[9]`: **PASSED** (0.07s) — 9 channels: 0.20 ms/eval.
+- `test_behaviour_multi_channel_throughput[16]`: **PASSED** (0.13s) — 16 channels: 0.22 ms/eval.
+- `test_behaviour_64_channel_burst_benchmark`: **PASSED** (0.08s) — 64 channels simultaneous burst: 14.8 ms total execution (< 100 ms budget).
+- `test_behaviour_memory_stability`: **PASSED** (0.09s) — Validates memory stability over 100 continuous iterations (growth < 1.0 MB, well within 25 MB budget).

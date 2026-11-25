@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 
 from modules.ai_intelligence.analytics_rules_widget import AnalyticsRulesWidget
+from modules.ai_intelligence.behaviour_analytics_widget import BehaviourAnalyticsWidget
 from modules.face_intelligence.face_workspace_widget import FaceWorkspaceWidget
 from modules.anpr_intelligence.anpr_workspace_widget import ANPRWorkspaceWidget
 from core.logging.logger import get_logger
@@ -197,6 +198,10 @@ class AIDashboardWidget(QWidget):
         # Tab 3: Automatic Number Plate Recognition (ANPR)
         self.anpr_widget = ANPRWorkspaceWidget()
         self.main_tabs.addTab(self.anpr_widget, "ANPR Intelligence")
+
+        # Tab 4: Advanced Behaviour Analytics (Phase 8)
+        self.behaviour_widget = BehaviourAnalyticsWidget()
+        self.main_tabs.addTab(self.behaviour_widget, "Behaviour Analytics")
 
         root_layout.addWidget(self.main_tabs)
 

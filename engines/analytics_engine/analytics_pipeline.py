@@ -41,6 +41,14 @@ from engines.analytics_engine.rule_evaluator import (
     CountingManager,
     HeatmapGenerator,
 )
+from engines.analytics_engine.behaviour_detectors import (
+    BehaviourAnalyticsManager,
+    BehaviourRuleConfig,
+    CrowdDensityConfig,
+    StationaryObjectConfig,
+    FallDetectionConfig,
+    DirectionalConfig,
+)
 
 logger = get_logger("analytics_pipeline")
 
@@ -76,6 +84,7 @@ class CameraAnalyticsPipeline:
         self.loitering_detector = LoiteringDetector()
         self.counting_manager = CountingManager(channel_id)
         self.heatmap_generator = HeatmapGenerator(channel_id)
+        self.behaviour_manager = BehaviourAnalyticsManager(channel_id)
 
         # Telemetry
         self.total_events_generated = 0
@@ -174,7 +183,13 @@ class CameraAnalyticsPipeline:
         )
         generated_events.extend(loitering_events)
 
-        # 5. Process Generated Events: Snapshots, Triggers, DB Persistence, EventBus
+        # 5. Evaluate Advanced Behaviour Rules (Phase 8: F-035..F-039)
+        behaviour_events = self.behaviour_manager.evaluate_frame(
+            active_zones, tracked_objects, ts
+        )
+        generated_events.extend(behaviour_events)
+
+        # 6. Process Generated Events: Snapshots, Triggers, DB Persistence, EventBus
         for event in generated_events:
             self.total_events_generated += 1
             self.events_by_type[event.rule_type] += 1
@@ -314,6 +329,24 @@ class CameraAnalyticsPipeline:
         except Exception as e:
             logger.error("Failed to persist heatmap data: %s", e)
             return None
+
+    def add_behaviour_rule(self, rule: BehaviourRuleConfig) -> None:
+        """Adds an advanced behaviour analytics rule (F-035..F-039)."""
+        with self._lock:
+            self.behaviour_manager.add_rule(rule)
+
+    def remove_behaviour_rule(self, rule_id: str) -> None:
+        """Removes a behaviour analytics rule."""
+        with self._lock:
+            self.behaviour_manager.remove_rule(rule_id)
+
+    def reset(self) -> None:
+        """Resets all active detector state and tracking histories."""
+        with self._lock:
+            self.intrusion_detector.reset()
+            self.tripwire_detector.reset_counters()
+            self.loitering_detector.reset()
+            self.behaviour_manager.reset()
 
 
 class AnalyticsManager:

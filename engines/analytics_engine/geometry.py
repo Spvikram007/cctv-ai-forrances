@@ -159,3 +159,115 @@ def get_crossing_direction(
 
     # Default fallback if boundary-aligned
     return "A_TO_B" if o_prev >= o_curr else "B_TO_A"
+
+
+# =========================================================================
+# PHASE 8: BEHAVIOURAL GEOMETRY UTILITIES
+# =========================================================================
+
+def euclidean_distance(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
+    """
+    Computes Euclidean distance between two 2D points (x1, y1) and (x2, y2).
+    """
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    return (dx * dx + dy * dy) ** 0.5
+
+
+def trajectory_heading_angle(p_start: Tuple[float, float], p_end: Tuple[float, float]) -> float:
+    """
+    Calculates heading angle in degrees [0.0, 360.0) from p_start to p_end.
+    Orientation in 2D image coordinates (x right, y down):
+      0° = East (moving +x)
+     90° = South (moving +y, downward)
+    180° = West (moving -x)
+    270° = North (moving -y, upward)
+    """
+    import math
+
+    dx = p_end[0] - p_start[0]
+    dy = p_end[1] - p_start[1]
+    rad = math.atan2(dy, dx)
+    deg = math.degrees(rad)
+    return deg % 360.0
+
+
+def angular_difference(angle1: Tuple[float, float] | float, angle2: float) -> float:
+    """
+    Computes the shortest angular difference between two angles in degrees.
+    Always returns a value in [0.0, 180.0].
+    Correctly handles circular wrap-around at 0° / 360°.
+    """
+    a1 = float(angle1) % 360.0
+    a2 = float(angle2) % 360.0
+    diff = abs(a1 - a2) % 360.0
+    if diff > 180.0:
+        diff = 360.0 - diff
+    return diff
+
+
+def polygon_area(polygon: List[Tuple[float, float]]) -> float:
+    """
+    Calculates the 2D planar area of a polygon using the Shoelace formula (Green's theorem).
+    Returns absolute area in normalized coordinate units squared.
+    """
+    if len(polygon) < 3:
+        return 0.0
+    n = len(polygon)
+    area = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        area += polygon[i][0] * polygon[j][1]
+        area -= polygon[j][0] * polygon[i][1]
+    return abs(area) / 2.0
+
+
+def box_aspect_ratio(bbox: Tuple[float, float, float, float]) -> float:
+    """
+    Computes width / height ratio from normalized bbox (x, y, w, h).
+    A standing person typically has aspect ratio < 0.8.
+    A prone / fallen person typically has aspect ratio > 1.2 (width exceeds height).
+    """
+    x, y, w, h = bbox
+    if h <= 1e-6:
+        return 0.0
+    return w / h
+
+
+def cluster_points(
+    points: List[Tuple[float, float]],
+    max_distance: float = 0.10,
+) -> List[List[int]]:
+    """
+    Groups 2D points into spatial clusters where each point in a cluster is within
+    max_distance of at least one other point in the cluster (single-linkage graph clustering).
+    Returns list of clusters, where each cluster is a list of point indices.
+    """
+    n = len(points)
+    if n == 0:
+        return []
+
+    visited = [False] * n
+    clusters = []
+
+    for i in range(n):
+        if visited[i]:
+            continue
+        cluster = []
+        queue = [i]
+        visited[i] = True
+
+        while queue:
+            curr = queue.pop(0)
+            cluster.append(curr)
+
+            for j in range(n):
+                if not visited[j]:
+                    if euclidean_distance(points[curr], points[j]) <= max_distance:
+                        visited[j] = True
+                        queue.append(j)
+
+        clusters.append(cluster)
+
+    return clusters
+
