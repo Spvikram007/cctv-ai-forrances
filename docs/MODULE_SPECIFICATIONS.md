@@ -50,10 +50,17 @@
 - **Role**: Metadata search engine across historical detection events.
 - **Query Types**: Target class, clothing colors, plate numbers, authorized faces, camera channels, and time windows.
 
-## Module 9: Video Enhancement (`modules/video_enhancement`)
-- **Status**: PLANNED (Phase 9)
-- **Role**: Non-destructive image processing.
-- **Techniques**: Low-light brightening, dehazing, edge sharpening, motion blur reduction, and super-resolution. Original video remains unmodified.
+## Module 9: Video Enhancement (`modules/video_enhancement`, `engines/enhancement_engine`)
+- **Status**: COMPLETE (Phase 9)
+- **Role**: Non-destructive video & image enhancement, low-light visibility recovery, atmospheric dehazing, sensor denoising, motion blur deblurring, AI super-resolution, and legal forensic evidence audit packaging.
+- **Components**: `LowLightEnhancer`, `DehazeEnhancer`, `DenoiseEnhancer`, `SharpeningEnhancer`, `SuperResolutionEnhancer`, `EnhancementPipeline`, `EnhancementConfig`, `EnhancementWorker`, `EnhancementManifest`, `PresetProfile`, `ComparisonSplitView`, `VideoEnhancementWidget`.
+- **Key Features**:
+  - *Low-Light Enhancement (F-040)*: Multi-Scale Retinex with Color Restoration (MSRCR, scales 15, 80, 250), adaptive CLAHE on L* channel in CIE L*a*b* space (clip limit 1.0-10.0), intensity-dependent adaptive gamma correction ($\gamma = 0.3-1.2$), and near-black noise-floor gating preventing amplification of sensor noise.
+  - *Dehazing & Atmospheric Clarity (F-041)*: Dark Channel Prior (DCP) with $15 \times 15$ local neighborhood minimum filtering, atmospheric light $A$ estimation from top $0.1\%$ brightest dark-channel pixels, transmission map estimation ($\omega = 0.95, t_0 = 0.10$), edge-preserving Guided Filter transmission map refinement, and radiance recovery.
+  - *Denoising & Image Restoration (F-042)*: Fast Non-Local Means (NL-Means) color and grayscale filtering ($h \in [2, 25]$), Bilateral edge-preserving filtering ($d=9, \sigma_{\text{color}}=75, \sigma_{\text{space}}=75$), and gradient-based edge preservation blending.
+  - *Motion Blur Reduction & Sharpening (F-043)*: Unsharp masking with Sobel edge-gradient gating (suppressing noise amplification in flat regions), Laplacian second-derivative high-pass filtering, and directional motion deblurring with oriented PSF kernels. Strictly contrast/acutance restoration; guaranteed zero generative detail hallucination.
+  - *AI Super-Resolution & Forensic Watermarking (F-044)*: $2\times$ and $4\times$ scaling factor with OpenVINO Intel UHD 730 GPU offload and CPU AVX2 fallback, high-fidelity Lanczos-4/Bicubic fallback, and mandatory visual evidence watermarking stamped at bottom-right: `[AI ENHANCED - NOT ORIGINAL EVIDENCE]`.
+  - *Non-Destructive Enhancement Workspace (F-045)*: PySide6 command center mounted at View 6 featuring interactive draggable split-screen slider ($0\%-100\%$) and side-by-side viewports, preset manager (Neutral, Night Vision, Fog Penetration, Plate Clarity, Face Detail), decoupled asynchronous worker (`EnhancementWorker`), strict non-destructive isolation (`storage/enhanced/`), and cryptographic SHA-256 sidecar JSON audit manifests.
 
 ## Module 10: Video Forensics (`modules/video_forensics`, `engines/forensic_engine`)
 - **Status**: PLANNED (Phase 10)

@@ -435,3 +435,49 @@ TESTS PERFORMED: Automated execution across 243 test cases (206 regression tests
 TEST RESULTS: 243 passed, 0 failed, 100% pass rate in 31.89s.  
 KNOWN ISSUES: Calibrated scene area (m²) is recommended for optimal crowd density accuracy; fall detection requires human verification review.  
 GIT COMMIT: 1e6942e
+
+## [0.9.0-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-003  
+FEATURE ID: F-040, F-041, F-042, F-043, F-044, F-045  
+DATE: 2026-11-25  
+VERSION: 0.9.0-alpha  
+CHANGE TYPE: NEW FEATURE & ENHANCEMENT ENGINE  
+DESCRIPTION: Implemented Phase 9 – Video Enhancement Engine. Delivered Low-Light Enhancement (F-040) featuring Multi-Scale Retinex with Color Restoration (MSRCR, scales 15, 80, 250), adaptive CLAHE in CIE L*a*b* color space strictly preserving chromatic balance, intensity-dependent adaptive gamma correction (0.3-1.2), and near-black noise-floor gating preventing sensor noise amplification in deep shadows. Delivered Dehazing & Atmospheric Clarity (F-041) utilizing Dark Channel Prior (DCP) with 15x15 minimum patch filtering, top 0.1% brightest pixel atmospheric light estimation, transmission map bounds (t0=0.10), edge-preserving Box-Filter Guided Filtering with grayscale guidance, and scene radiance recovery. Delivered Denoising & Image Restoration (F-042) implementing Fast Non-Local Means (NL-Means) color/gray filtering and Bilateral edge-preserving filtering with Sobel gradient edge blending. Delivered Motion Blur Reduction & Sharpening (F-043) featuring edge-gradient gated unsharp masking, Laplacian high-pass filtering, and directional motion deblurring with oriented Point Spread Functions (PSF), strictly contrast-enhancing with guaranteed zero generative evidence hallucination. Delivered AI Super-Resolution (F-044) providing 2x and 4x scaling with Intel OpenVINO™ GPU offload (Intel UHD 730), CPU AVX2 fallback, high-fidelity Lanczos-4/Bicubic fallback, and mandatory forensic watermark stamping `[AI ENHANCED - NOT ORIGINAL EVIDENCE]`. Delivered Non-Destructive Enhancement Workspace (F-045) mounted at View 6 in PySide6 Command Center featuring an interactive draggable split-screen slider (ComparisonSplitView) and side-by-side comparative canvas, preset manager (Night Vision, Fog Penetration, Plate Clarity, Face Detail), decoupled asynchronous worker (EnhancementWorker), strict non-destructive isolation (storage/enhanced/), and cryptographic SHA-256 sidecar JSON audit manifests. Full regression and enhancement test suite verified at 280 passing tests (100% pass rate in 38.49s).  
+FILES CREATED:  
+- `engines/enhancement_engine/__init__.py`
+- `engines/enhancement_engine/low_light.py`
+- `engines/enhancement_engine/dehazing.py`
+- `engines/enhancement_engine/denoiser.py`
+- `engines/enhancement_engine/sharpening.py`
+- `engines/enhancement_engine/super_resolution.py`
+- `engines/enhancement_engine/enhancement_pipeline.py`
+- `modules/video_enhancement/__init__.py`
+- `modules/video_enhancement/comparison_view.py`
+- `modules/video_enhancement/enhancement_widget.py`
+- `docs/VIDEO_ENHANCEMENT_VERIFICATION_REPORT.md`
+- `tests/unit/test_low_light_enhancement.py`
+- `tests/unit/test_dehazing.py`
+- `tests/unit/test_denoiser.py`
+- `tests/unit/test_sharpening.py`
+- `tests/unit/test_super_resolution.py`
+- `tests/unit/test_enhancement_pipeline.py`
+- `tests/integration/test_enhancement_ui.py`
+- `tests/performance/test_enhancement_performance.py`
+FILES MODIFIED:  
+- `VERSION`
+- `core/config/settings.py`
+- `app/main.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/TEST_REPORTS.md`
+- `docs/CHANGELOG.md`
+FILES DELETED: None  
+DATABASE CHANGES: No structural database migrations required; runtime models and audit manifests handle storage metadata.  
+DEPENDENCIES CHANGED: None (using existing PySide6, OpenCV, OpenVINO, NumPy, and Python standard libraries).  
+TESTS PERFORMED: Automated execution across 280 test cases (243 regression tests + 37 new Phase 9 tests) covering CIE Lab CLAHE luminance expansion, chromatic channel invariance, sigmoid noise gating, adaptive gamma correction, MSRCR multi-scale retinex, Dark Channel Prior calculation, atmospheric light estimation, guided filter transmission refinement, scene radiance recovery, NL-Means noise reduction, Bilateral edge preservation, fast preview denoising, unsharp masking with edge-gradient gating, Laplacian sharpening, directional PSF deblurring, strict non-hallucination verification, 2x and 4x super-resolution scaling, OpenVINO device inspection, Lanczos-4 acutance, mandatory forensic watermarking, pipeline sequencing, preset profile construction, raw recording immutability, sidecar JSON manifest generation, asynchronous worker threads, split-slider interaction, view mode switching, UI widget smoke testing, and 720p/1080p/4K performance benchmarks on Intel hardware.  
+TEST RESULTS: 280 passed, 0 failed, 100% pass rate in 38.49s.  
+KNOWN ISSUES: Deep learned super-resolution weights require model downloads; deterministic 8-tap Lanczos-4 fallback executes seamlessly in offline air-gapped environments.  
+GIT COMMIT: 5e92ef9

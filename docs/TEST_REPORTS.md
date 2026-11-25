@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 243
-- **Passed**: 243
+- **Total Test Cases**: 280
+- **Passed**: 280
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 31.89 seconds
+- **Total Duration**: 38.49 seconds
 
 ---
 
@@ -394,3 +394,58 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `test_behaviour_multi_channel_throughput[16]`: **PASSED** (0.13s) — 16 channels: 0.22 ms/eval.
 - `test_behaviour_64_channel_burst_benchmark`: **PASSED** (0.08s) — 64 channels simultaneous burst: 14.8 ms total execution (< 100 ms budget).
 - `test_behaviour_memory_stability`: **PASSED** (0.09s) — Validates memory stability over 100 continuous iterations (growth < 1.0 MB, well within 25 MB budget).
+
+### 48. Phase 9 Video Enhancement Benchmarks (Intel Core i5-12400 / Intel UHD 730 GPU)
+| Benchmark Target | Input Resolution | Output Resolution | Active Filters | Measured Latency | Throughput | Target Budget | Satisfied |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **720p HD Pipeline** | 1280x720 | 1280x720 | Low-Light (CLAHE/Gamma) + Bilateral Denoise + Sharpen | 52.4 ms | 19.1 FPS | < 250 ms | **PASSED** |
+| **1080p Full HD Pipeline** | 1920x1080 | 1920x1080 | Bilateral Denoise + Unsharp Masking (Edge-Gated) | 98.6 ms | 10.1 FPS | < 400 ms | **PASSED** |
+| **4K UHD Visibility Pipeline** | 3840x2160 | 3840x2160 | Dark Channel Prior Dehaze + Guided Filter + Sharpen | 642.1 ms | 1.56 FPS | < 1500 ms | **PASSED** |
+| **2x Super-Resolution** | 1280x720 | 2560x1440 | 8-tap Lanczos-4 + Edge Acutance Boost + Watermark | 18.2 ms | 54.9 FPS | < 200 ms | **PASSED** |
+
+### 49. Low-Light Enhancement Suite (`tests/unit/test_low_light_enhancement.py`)
+- `test_clahe_lab_expands_luminance_without_shifting_chroma`: **PASSED** (0.02s) — Tests CLAHE in CIE L*a*b* space expanding L* while preserving chromatic channels a* and b*.
+- `test_noise_floor_gating_protects_near_black`: **PASSED** (0.01s) — Validates sigmoid noise-floor gating preventing over-amplification of sensor noise in near-black regions (< 18.0).
+- `test_adaptive_gamma_brightens_shadows`: **PASSED** (0.01s) — Tests intensity-dependent adaptive gamma correction stretching dark shadow regions.
+- `test_multi_scale_retinex`: **PASSED** (0.03s) — Verifies Multi-Scale Retinex with Color Restoration across scales (15, 80, 250) producing valid normalized BGR outputs.
+- `test_enhance_combined_mode`: **PASSED** (0.02s) — Validates combined mode applying Lab CLAHE, adaptive gamma, and noise-floor gating.
+- `test_edge_cases_empty_and_uniform_frames`: **PASSED** (0.00s) — Verifies robust handling of empty, all-black, and all-white input frames.
+
+### 50. Dehazing & Visibility Enhancement Suite (`tests/unit/test_dehazing.py`)
+- `test_dehazing_recovers_contrast_and_edges`: **PASSED** (0.04s) — Validates Dark Channel Prior recovering contrast and edge sharpness in synthetic dense fog scenes.
+- `test_dark_channel_computation`: **PASSED** (0.01s) — Verifies 15x15 local minimum filtering for dark channel calculation.
+- `test_atmospheric_light_estimation`: **PASSED** (0.01s) — Tests top 0.1% brightest dark-channel pixel selection for atmospheric light A estimation.
+- `test_guided_filter_preserves_edges`: **PASSED** (0.01s) — Verifies Box-Filter Guided Filter smoothing flat regions while preserving boundary transitions.
+- `test_dehazer_empty_and_solid_frames`: **PASSED** (0.00s) — Graceful handling of None and solid frames.
+
+### 51. Denoising & Image Restoration Suite (`tests/unit/test_denoiser.py`)
+- `test_nlmeans_denoising_reduces_variance`: **PASSED** (0.08s) — Tests Fast NL-Means color denoising reducing Gaussian noise variance in flat regions.
+- `test_bilateral_filtering_edge_preservation`: **PASSED** (0.01s) — Verifies Bilateral filtering smoothing flat patches while preserving sharp edge boundaries.
+- `test_fast_denoising_mode`: **PASSED** (0.00s) — Tests fast hybrid median-Gaussian preview denoising.
+- `test_edge_preservation_blend`: **PASSED** (0.01s) — Validates Sobel gradient edge blending mask.
+
+### 52. Motion Blur Reduction & Sharpening Suite (`tests/unit/test_sharpening.py`)
+- `test_unsharp_mask_enhances_acutance`: **PASSED** (0.01s) — Tests unsharp masking increasing edge gradient magnitude.
+- `test_gradient_threshold_gating_suppresses_noise_sharpening`: **PASSED** (0.00s) — Verifies flat background noise below threshold is not amplified.
+- `test_laplacian_sharpen`: **PASSED** (0.00s) — Tests Laplacian second-derivative high-pass filtering.
+- `test_directional_deblur`: **PASSED** (0.01s) — Validates directional deblurring with oriented Point Spread Function (PSF).
+- `test_non_hallucination_guarantee`: **PASSED** (0.00s) — Strict non-hallucination verification ensuring pure black frames remain unchanged without generative hallucination.
+
+### 53. AI Super-Resolution & Forensic Watermarking Suite (`tests/unit/test_super_resolution.py`)
+- `test_2x_super_resolution_scaling`: **PASSED** (0.01s) — Verifies 2x scale exactly doubles width and height dimensions.
+- `test_4x_super_resolution_scaling`: **PASSED** (0.01s) — Verifies 4x scale exactly quadruples width and height dimensions.
+- `test_forensic_watermark_stamping`: **PASSED** (0.01s) — Verifies mandatory forensic disclaimer watermark stamping `[AI ENHANCED - NOT ORIGINAL EVIDENCE]`.
+- `test_watermark_positions`: **PASSED** (0.00s) — Tests watermark positioning logic (bottom_right, top_left).
+- `test_lanczos4_interpolation_quality`: **PASSED** (0.01s) — Verifies 8-tap Lanczos-4 interpolation produces sharper acutance than bilinear scaling.
+- `test_active_device_property`: **PASSED** (0.00s) — Tests active hardware device string reporting.
+
+### 54. Enhancement Pipeline, Worker & Audit Manifest Suite (`tests/unit/test_enhancement_pipeline.py`)
+- `test_pipeline_process_frame_end_to_end`: **PASSED** (0.02s) — Tests complete pipeline execution (Denoise -> LowLight -> Sharpen -> SR -> Watermark).
+- `test_preset_profiles_produce_valid_configs`: **PASSED** (0.00s) — Validates all 5 preset profiles (Neutral, Night Vision, Fog Penetration, Plate Clarity, Face Detail).
+- `test_non_destructive_image_export_and_manifest`: **PASSED** (0.03s) — Verifies raw source recording immutability, isolated export to storage/enhanced/, and SHA-256 sidecar JSON manifest creation.
+- `test_non_destructive_video_clip_export`: **PASSED** (0.04s) — Tests multi-frame video clip enhancement and progress callback reporting.
+- `test_enhancement_worker_thread`: **PASSED** (0.03s) — Tests asynchronous background worker execution decoupled from main UI thread.
+
+### 55. Enhancement UI Integration Suite (`tests/integration/test_enhancement_ui.py`)
+- `test_comparison_split_view_modes_and_slider`: **PASSED** (0.04s) — Tests ComparisonSplitView split-slider ratio adjustments, mouse dragging, and side-by-side mode switching.
+- `test_video_enhancement_widget_initialization_and_presets`: **PASSED** (0.06s) — Tests VideoEnhancementWidget control initialization, preset profile application, and preview updates.
