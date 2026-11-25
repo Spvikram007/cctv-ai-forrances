@@ -1,8 +1,8 @@
 """
-Digital Forensics & Evidence Integrity Workspace (Phase 10 - F-018 & F-023).
+Digital Forensics & Evidence Integrity Workspace (Phase 10 & 10.1 - F-018 & F-023).
 Provides evidence locker browser, SHA-256 verification, discontinuity inspection,
-append-only chain of custody audits, cryptographic signature validation, and
-standalone .cctvevid package export.
+append-only chain of custody audits, independent signed checkpoints, trusted keystore
+validation, 5-tier RBAC enforcement, and standalone .cctvevid package export.
 """
 
 import os
@@ -40,12 +40,13 @@ from engines.forensic_engine.authenticity import (
     ForensicAnalysisReport,
     IntegrityStatus,
 )
-from engines.forensic_engine.crypto_signer import ForensicSigner
+from engines.forensic_engine.crypto_signer import ForensicSigner, TrustedKeyStore
 from engines.forensic_engine.evidence_locker import (
     EvidenceLocker,
     SignedEvidenceManifest,
     EvidenceType,
     ChainOfCustodyLedger,
+    CustodyCheckpoint,
     ForensicAccessDeniedError,
 )
 from engines.forensic_engine.evidence_packager import EvidencePackager
@@ -55,7 +56,8 @@ logger = get_logger("forensics_widget")
 
 class VideoForensicsWidget(QWidget):
     """
-    Primary workspace widget for digital video forensics and evidence locker management.
+    Primary workspace widget for digital video forensics, 5-Tier RBAC evidence locker
+    management, trusted keystore inspection, and cryptographic audit logging.
     """
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
@@ -81,7 +83,7 @@ class VideoForensicsWidget(QWidget):
         title_box = QVBoxLayout()
         lbl_title = QLabel("DIGITAL FORENSICS, AUTHENTICITY & EVIDENCE INTEGRITY")
         lbl_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #58a6ff;")
-        lbl_sub = QLabel("Evidence Locker, Cryptographic Digital Signatures & Chain of Custody | Phase 10")
+        lbl_sub = QLabel("Evidence Locker, Trusted Keystore, Signed Checkpoints & 5-Tier RBAC | Phase 10.1")
         lbl_sub.setStyleSheet("font-size: 11px; color: #8b949e;")
         title_box.addWidget(lbl_title)
         title_box.addWidget(lbl_sub)
@@ -97,6 +99,11 @@ class VideoForensicsWidget(QWidget):
         btn_verify.setStyleSheet("background-color: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 6px 12px; border-radius: 4px;")
         btn_verify.clicked.connect(self._on_verify_clicked)
         header_layout.addWidget(btn_verify)
+
+        btn_scan_all = QPushButton("Scan Locker Integrity")
+        btn_scan_all.setStyleSheet("background-color: #388bfd1a; border: 1px solid #1f6feb; color: #58a6ff; padding: 6px 12px; border-radius: 4px; font-weight: 600;")
+        btn_scan_all.clicked.connect(self._on_scan_integrity_clicked)
+        header_layout.addWidget(btn_scan_all)
 
         btn_export_pkg = QPushButton("Export Evidence Package")
         btn_export_pkg.setStyleSheet("background-color: #238636; color: white; padding: 6px 12px; border-radius: 4px; font-weight: 600;")
@@ -153,15 +160,15 @@ class VideoForensicsWidget(QWidget):
         self._init_authenticity_tab()
         self.tabs.addTab(self.tab_authenticity, "Integrity & Discontinuity Audit")
 
-        # Tab 2: Chain of Custody Ledger
+        # Tab 2: Chain of Custody & Checkpoints
         self.tab_custody = QWidget()
         self._init_custody_tab()
-        self.tabs.addTab(self.tab_custody, "Chain of Custody Ledger")
+        self.tabs.addTab(self.tab_custody, "Chain of Custody & Checkpoints")
 
-        # Tab 3: Digital Signature & Certificate
+        # Tab 3: Digital Signature & Trusted Keystore
         self.tab_signature = QWidget()
         self._init_signature_tab()
-        self.tabs.addTab(self.tab_signature, "Digital Signature & Key")
+        self.tabs.addTab(self.tab_signature, "Digital Signature & Key Trust")
 
         # Tab 4: Legal & Forensic Disclaimer
         self.tab_legal = QWidget()
@@ -225,7 +232,16 @@ class VideoForensicsWidget(QWidget):
         self.lbl_chain_status = QLabel("Chain Integrity: UNVERIFIED")
         self.lbl_chain_status.setStyleSheet("color: #8b949e; font-weight: bold;")
         status_bar.addWidget(self.lbl_chain_status)
+
+        self.lbl_checkpoint_status = QLabel("Checkpoints: UNVERIFIED")
+        self.lbl_checkpoint_status.setStyleSheet("color: #8b949e; font-size: 11px;")
+        status_bar.addWidget(self.lbl_checkpoint_status)
         status_bar.addStretch()
+
+        btn_create_cp = QPushButton("Create Signed Checkpoint")
+        btn_create_cp.setStyleSheet("background-color: #21262d; border: 1px solid #30363d; color: #58a6ff; padding: 4px 10px; border-radius: 4px;")
+        btn_create_cp.clicked.connect(self._create_checkpoint_clicked)
+        status_bar.addWidget(btn_create_cp)
 
         btn_verify_chain = QPushButton("Verify Hash-Chain")
         btn_verify_chain.setStyleSheet("background-color: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 4px 10px; border-radius: 4px;")
@@ -245,11 +261,11 @@ class VideoForensicsWidget(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
-        box_sig = QGroupBox("Asymmetric Digital Signature (ECDSA NIST P-256)")
+        box_sig = QGroupBox("Asymmetric Digital Signature & Trust Infrastructure")
         box_sig.setStyleSheet("QGroupBox { color: #58a6ff; font-weight: 600; border: 1px solid #30363d; border-radius: 4px; padding: 10px; margin-top: 6px; }")
         fl = QFormLayout(box_sig)
 
-        lbl_algo = QLabel("ECDSA (SECP256R1) with SHA-256")
+        lbl_algo = QLabel("ECDSA (SECP256R1 / NIST P-256) with SHA-256")
         lbl_algo.setStyleSheet("color: #c9d1d9;")
         fl.addRow("Algorithm:", lbl_algo)
 
@@ -257,15 +273,27 @@ class VideoForensicsWidget(QWidget):
         lbl_key_prot.setStyleSheet("color: #3fb950; font-weight: 600;")
         fl.addRow("Key Protection:", lbl_key_prot)
 
+        self.lbl_key_id = QLabel("-")
+        self.lbl_key_id.setStyleSheet("color: #79c0ff; font-weight: 600; font-family: monospace;")
+        fl.addRow("Key ID:", self.lbl_key_id)
+
+        self.lbl_fingerprint = QLabel("-")
+        self.lbl_fingerprint.setStyleSheet("color: #79c0ff; font-family: monospace; font-size: 11px;")
+        fl.addRow("Key Fingerprint:", self.lbl_fingerprint)
+
+        self.lbl_trust_status = QLabel("CHECKING...")
+        self.lbl_trust_status.setStyleSheet("color: #8b949e; font-weight: bold;")
+        fl.addRow("Identity Trust:", self.lbl_trust_status)
+
         self.txt_signature = QTextEdit()
         self.txt_signature.setReadOnly(True)
-        self.txt_signature.setMaximumHeight(65)
+        self.txt_signature.setMaximumHeight(55)
         self.txt_signature.setStyleSheet("background-color: #161b22; color: #79c0ff; font-family: monospace; font-size: 10px;")
         fl.addRow("Signature (Hex):", self.txt_signature)
 
         self.txt_pubkey = QTextEdit()
         self.txt_pubkey.setReadOnly(True)
-        self.txt_pubkey.setMaximumHeight(100)
+        self.txt_pubkey.setMaximumHeight(85)
         self.txt_pubkey.setStyleSheet("background-color: #161b22; color: #8b949e; font-family: monospace; font-size: 10px;")
         fl.addRow("Public Key (PEM):", self.txt_pubkey)
 
@@ -278,20 +306,31 @@ class VideoForensicsWidget(QWidget):
         layout.setSpacing(10)
 
         notice_text = (
-            "FORENSIC INTEGRITY NOTICE & LEGAL GUIDELINES\n"
-            "============================================\n\n"
+            "FORENSIC INTEGRITY NOTICE & LEGAL GUIDELINES (PHASE 10.1 HARDENED)\n"
+            "===================================================================\n\n"
             "1. HASH INTEGRITY != SCENE TRUTHFULNESS:\n"
             "A valid SHA-256 hash and ECDSA digital signature prove strictly that the acquired digital file "
             "has not been modified, altered, truncated, or tampered with since acquisition. "
             "It does NOT prove that the recorded physical events were authentic or un-staged prior to capture.\n\n"
-            "2. DERIVED ENHANCEMENT PROVENANCE:\n"
+            "2. AUTHORITATIVE TRUST STORE VS SELF-SUPPLIED KEYS:\n"
+            "An evidence package includes its public key for convenience, but trust CANNOT be established by the "
+            "package alone. Authoritative third-party verification requires comparing key fingerprints against an "
+            "independent external Trusted Keystore or trusted root certificate.\n\n"
+            "3. INDEPENDENT SIGNED CHECKPOINTS:\n"
+            "Periodic signed ledger checkpoints are stored outside the evidence locker. Even if an attacker "
+            "with full local filesystem access rewrites the custody ledger and re-computes Merkle hashes, the "
+            "mismatch against external signed checkpoints exposes the alteration immediately.\n\n"
+            "4. 5-TIER FORENSIC ROLE-BASED ACCESS CONTROL (5-TIER RBAC):\n"
+            "  - ADMIN: Full configuration, ingestion, export, checkpoints, auditing\n"
+            "  - INVESTIGATOR: Ingestion, packaging, verification, full case access\n"
+            "  - SUPERVISOR: Ingestion, review, verification, export approval\n"
+            "  - OPERATOR: Evidence viewing, stream verification, live audit checks\n"
+            "  - VIEWER: Read-only inspection of verified evidence manifests\n\n"
+            "5. DERIVED ENHANCEMENT PROVENANCE:\n"
             "If an evidence item is classified as 'DERIVED_ENHANCEMENT', the file represents an algorithmic "
             "or deep-learned restoration (e.g. low-light amplification, dehazing, super-resolution). "
             "Under criminal and civil court admissibility rules, derived footage MUST NOT be presented as raw "
-            "original evidence without disclosing the companion original capture and full parameter manifest.\n\n"
-            "3. CHAIN OF CUSTODY (MERKLE HASH CHAIN):\n"
-            "Every operator interaction is recorded with an immutable SHA-256 link to the preceding event. "
-            "Any modification of past records will be detected immediately during verification.\n"
+            "original evidence without disclosing the companion original capture and full parameter manifest.\n"
         )
 
         txt_notice = QTextEdit()
@@ -357,7 +396,17 @@ class VideoForensicsWidget(QWidget):
         else:
             self.lbl_status_badge.setStyleSheet("color: #f85149; font-weight: bold;")
 
-        # Signatures
+        # Signatures & Trust
+        self.lbl_key_id.setText(manifest.key_id or "KEY-2026-PRIMARY-01")
+        self.lbl_fingerprint.setText(manifest.key_fingerprint or "-")
+        is_trusted, _, reason = self.locker.signer.trust_store.is_key_trusted(manifest.public_key_pem)
+        if is_trusted:
+            self.lbl_trust_status.setText("TRUSTED (Authoritative Keystore)")
+            self.lbl_trust_status.setStyleSheet("color: #3fb950; font-weight: bold;")
+        else:
+            self.lbl_trust_status.setText(f"UNTRUSTED ({reason})")
+            self.lbl_trust_status.setStyleSheet("color: #f85149; font-weight: bold;")
+
         self.txt_signature.setText(manifest.signature_hex)
         self.txt_pubkey.setText(manifest.public_key_pem)
 
@@ -381,6 +430,15 @@ class VideoForensicsWidget(QWidget):
         else:
             self.lbl_chain_status.setText(f"Chain Integrity: TAMPERED! ({err})")
             self.lbl_chain_status.setStyleSheet("color: #f85149; font-weight: bold;")
+
+        # Checkpoints status
+        cp_valid, cp_count, cp_errs = self.locker.verify_checkpoints(manifest.evidence_id)
+        if cp_valid:
+            self.lbl_checkpoint_status.setText(f"Checkpoints: VERIFIED ({cp_count} signed)")
+            self.lbl_checkpoint_status.setStyleSheet("color: #3fb950; font-size: 11px;")
+        else:
+            self.lbl_checkpoint_status.setText("Checkpoints: TAMPER DETECTED!")
+            self.lbl_checkpoint_status.setStyleSheet("color: #f85149; font-weight: bold; font-size: 11px;")
 
     def _on_ingest_clicked(self) -> None:
         """Opens dialog to select a video file to ingest into evidence locker."""
@@ -406,7 +464,7 @@ class VideoForensicsWidget(QWidget):
             QMessageBox.information(
                 self,
                 "Evidence Ingested",
-                f"Successfully ingested:\n{Path(path).name}\n\nEvidence ID: {manifest.evidence_id}\nSHA-256: {manifest.file_sha256[:16]}...\nSigned and locked.",
+                f"Successfully ingested:\n{Path(path).name}\n\nEvidence ID: {manifest.evidence_id}\nSHA-256: {manifest.file_sha256[:16]}...\nKey ID: {manifest.key_id}\nSigned and locked.",
             )
             self._refresh_evidence_list()
         except Exception as e:
@@ -428,8 +486,10 @@ class VideoForensicsWidget(QWidget):
         msg = (
             f"Evidence ID: {res['evidence_id']}\n"
             f"SHA-256 Match: {'PASSED' if res['sha256_match'] else 'FAILED'}\n"
+            f"Key Identity Trust: {'PASSED (TRUSTED)' if res['key_trusted'] else 'UNTRUSTED'}\n"
             f"Digital Signature: {'PASSED' if res['signature_valid'] else 'FAILED'}\n"
             f"Custody Chain: {'PASSED' if res['custody_chain_valid'] else 'FAILED'}\n"
+            f"Signed Checkpoints: {'PASSED' if res['checkpoints_valid'] else 'FAILED'}\n"
             f"Overall Verdict: {'AUTHENTIC & UNALTERED' if res['is_valid'] else 'TAMPERED / ALTERED'}"
         )
 
@@ -439,6 +499,27 @@ class VideoForensicsWidget(QWidget):
             QMessageBox.warning(self, "Verification Warning", msg)
 
         self._display_manifest_details(self._active_manifest)
+
+    def _on_scan_integrity_clicked(self) -> None:
+        """Scans all evidence items in locker for tampering."""
+        results = self.locker.scan_locker_integrity()
+        total = len(results)
+        valid = sum(1 for r in results if r.get("is_valid"))
+        tampered = total - valid
+
+        if tampered == 0:
+            QMessageBox.information(
+                self,
+                "Locker Integrity Scan Clean",
+                f"Scanned {total} evidence items.\nAll items verified cryptographically valid with zero tampering detected.",
+            )
+        else:
+            QMessageBox.critical(
+                self,
+                "TAMPER DETECTED",
+                f"Scanned {total} evidence items.\n{tampered} items failed verification!\nCheck audit logs immediately.",
+            )
+        self._refresh_evidence_list()
 
     def _on_export_package_clicked(self) -> None:
         """Exports the active evidence item as a standalone .cctvevid package."""
@@ -469,12 +550,31 @@ class VideoForensicsWidget(QWidget):
             QMessageBox.information(
                 self,
                 "Package Export Complete",
-                f"Standalone forensic package created:\n{created_pkg}\n\nIncludes media, signed manifest, public key, and zero-dependency verification utility.",
+                f"Standalone forensic package created:\n{created_pkg}\n\nIncludes media, signed manifest, public key, signed checkpoints, and verification utility.",
             )
             self._display_manifest_details(self._active_manifest)
         except Exception as e:
             logger.error("Package export failed: %s", e, exc_info=True)
             QMessageBox.critical(self, "Export Failed", str(e))
+
+    def _create_checkpoint_clicked(self) -> None:
+        """Creates a signed periodic checkpoint for the active evidence."""
+        if self._active_manifest is None:
+            return
+        try:
+            cp = self.locker.create_signed_checkpoint(
+                evidence_id=self._active_manifest.evidence_id,
+                operator_username=self._current_operator,
+                operator_role=self._current_role,
+            )
+            QMessageBox.information(
+                self,
+                "Checkpoint Created",
+                f"Signed checkpoint created at record {cp.record_index}:\nHash: {cp.record_hash[:16]}...\nStored independently.",
+            )
+            self._display_manifest_details(self._active_manifest)
+        except Exception as e:
+            QMessageBox.critical(self, "Checkpoint Failed", str(e))
 
     def _verify_custody_chain(self) -> None:
         """Verifies the hash chain of the active ledger."""

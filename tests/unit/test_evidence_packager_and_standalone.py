@@ -1,5 +1,5 @@
 """
-Unit Tests for Evidence Packaging & Standalone Verification Utility (Phase 10 - F-023).
+Unit Tests for Evidence Packaging & Standalone Verification Utility (Phase 10 & 10.1 - F-023).
 """
 
 import os
@@ -13,7 +13,7 @@ import cv2
 
 from engines.forensic_engine.evidence_locker import EvidenceLocker
 from engines.forensic_engine.evidence_packager import EvidencePackager
-from tools.verify_evidence import verify_package
+from tools.verify_evidence import verify_package, VerificationStatus
 
 
 @pytest.fixture
@@ -64,16 +64,19 @@ def test_create_and_verify_standalone_package(packager_fixture) -> None:
         assert "manifest.sig" in namelist
         assert "public_key.pem" in namelist
         assert "chain_of_custody.jsonl" in namelist
+        assert "checkpoints.json" in namelist
         assert "verify_evidence.py" in namelist
         assert "README_FORENSIC_VERIFICATION.txt" in namelist
         assert "test_raw.mp4" in namelist
 
-    # 2. Run standalone in-process verification
-    is_intact = verify_package(created_pkg)
-    assert is_intact is True
+    # 2. Run standalone in-process verification with trust store
+    trust_store_p = str(locker.signer.trust_store.store_file)
+    status = verify_package(created_pkg, trust_store_path=trust_store_p)
+    assert status == VerificationStatus.VERIFIED
+    assert bool(status) is True
 
     # 3. Test execution via external python subprocess CLI (as court/defense would execute)
-    cmd = [sys.executable, "tools/verify_evidence.py", created_pkg]
+    cmd = [sys.executable, "tools/verify_evidence.py", created_pkg, "--trust-store", trust_store_p]
     result = subprocess.run(cmd, capture_output=True, text=True)
     assert result.returncode == 0
     assert "FINAL VERDICT: EVIDENCE IS CRYPTOGRAPHICALLY VALID" in result.stdout
@@ -113,11 +116,13 @@ def test_tampered_package_detected_by_standalone_verifier(packager_fixture) -> N
         f.write(b"CORRUPTED_BYTES_INJECTION")
 
     # Re-verify extracted folder directly
-    is_intact = verify_package(extract_dir)
-    assert is_intact is False
+    trust_store_p = str(locker.signer.trust_store.store_file)
+    status = verify_package(extract_dir, trust_store_path=trust_store_p)
+    assert status == VerificationStatus.FAILED
+    assert bool(status) is False
 
     # Subprocess CLI verification must fail with exit code 1
-    cmd = [sys.executable, "tools/verify_evidence.py", extract_dir]
+    cmd = [sys.executable, "tools/verify_evidence.py", extract_dir, "--trust-store", trust_store_p]
     result = subprocess.run(cmd, capture_output=True, text=True)
     assert result.returncode == 1
     assert "FINAL VERDICT: EVIDENCE VERIFICATION FAILED" in result.stdout

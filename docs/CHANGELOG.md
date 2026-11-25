@@ -523,4 +523,40 @@ DEPENDENCIES CHANGED: None (using existing PySide6, OpenCV, cryptography, and Py
 TESTS PERFORMED: Automated execution across 305 test cases (280 regression tests + 25 new Phase 10 tests) covering file SHA-256 chunked hashing, bit-level alteration detection, duplicate frame run clustering, visual splicing jump detection, corrupted container handling, legal disclaimer verification, DPAPI private key protection & unprotection, ECDSA P-256 digital signature generation and verification, tampered payload rejection, malformed signature rejection, key persistence across instances, raw recording ingestion (ORIGINAL_CAPTURE), Phase 9 derived enhancement ingestion (DERIVED_ENHANCEMENT), RBAC access control enforcement (ForensicAccessDeniedError), vault media tamper detection, genesis block initialization, Merkle hash-chaining, record modification detection, record deletion detection, .cctvevid package creation, standalone verification CLI execution, tampered package rejection, PySide6 UI table population and row selection, detail tabs inspection, and 720p/1080p/SHA-256 performance benchmarks on Intel Core i5-12400.  
 TEST RESULTS: 305 passed, 0 failed, 100% pass rate in 40.73s.  
 KNOWN ISSUES: Standalone verifier optionally uses cryptography package for ECDSA verification; in air-gapped environments lacking cryptography, SHA-256 and Merkle hash chain checks execute using pure Python standard library.  
-GIT COMMIT: 629b8a6
+GIT COMMIT: 606d62c
+
+## [1.0.1-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-005  
+FEATURE ID: F-018, F-023  
+DATE: 2026-11-25  
+VERSION: 1.0.1-alpha  
+CHANGE TYPE: SECURITY HARDENING & AUDIT  
+DESCRIPTION: Executed Phase 10.1 Security Hardening & Admissibility Hardening pass across Digital Forensics & Evidence Integrity. Delivered Authoritative Trusted KeyStore (`TrustedKeyStore` in `engines/forensic_engine/crypto_signer.py`) managing SHA-256 public key fingerprints (`compute_key_fingerprint`), operator identities, and key revocation/rotation, strictly preventing self-signed package trust forgery. Delivered Independent Signed Custody Checkpoints (`CustodyCheckpoint` in `engines/forensic_engine/evidence_locker.py`) stored in an independent directory (`storage/evidence/checkpoints/<evidence_id>_checkpoints.json`) outside the evidence locker, mathematically defeating malicious administrator attacks where past ledger records are rewritten and Merkle hashes recomputed. Documented evidence storage immutability boundaries, Windows `FILE_ATTRIBUTE_READONLY` limitations, and hardware WORM / S3 Object Lock compliance guidelines. Added active locker integrity scanning (`scan_locker_integrity`) with automated tamper alerts. Hardened standalone evidence verifier (`tools/verify_evidence.py` and embedded `STANDALONE_VERIFIER_SCRIPT`), making ECDSA signature verification strictly mandatory (returning `VERIFICATION INCOMPLETE` / Exit Code 3 if `cryptography` is missing, and `UNTRUSTED SIGNING IDENTITY` / Exit Code 2 for unrecognized keys). Standardized 4 distinct verification exit codes (0, 1, 2, 3) and space-safe quoted Windows CLI syntax. Corrected legacy documentation to consistently enforce the 5-Tier Forensic Role-Based Access Control model (`ADMIN`, `INVESTIGATOR`, `SUPERVISOR`, `OPERATOR`, `VIEWER`), testing the complete permission matrix. Executed full automated regression suite across 313 test cases (100% pass rate in 44.22s).  
+FILES CREATED:  
+- `docs/PHASE_10_1_SECURITY_HARDENING_REPORT.md`  
+- `tests/unit/test_phase10_1_security_hardening.py`  
+FILES MODIFIED:  
+- `VERSION`  
+- `core/config/settings.py`  
+- `engines/forensic_engine/__init__.py`  
+- `engines/forensic_engine/crypto_signer.py`  
+- `engines/forensic_engine/evidence_locker.py`  
+- `engines/forensic_engine/evidence_packager.py`  
+- `modules/video_forensics/forensics_workspace_widget.py`  
+- `tools/verify_evidence.py`  
+- `tests/unit/test_evidence_packager_and_standalone.py`  
+- `docs/FEATURE_REGISTER.md`  
+- `docs/DEVELOPMENT_STATUS.md`  
+- `docs/ARCHITECTURE.md`  
+- `docs/MODULE_SPECIFICATIONS.md`  
+- `docs/TEST_REPORTS.md`  
+- `docs/DIGITAL_FORENSICS_VERIFICATION_REPORT.md`  
+- `docs/CHANGELOG.md`  
+FILES DELETED: None  
+DATABASE CHANGES: None (authoritative JSON trust store and independent checkpoint repositories).  
+DEPENDENCIES CHANGED: None.  
+TESTS PERFORMED: Automated execution across 313 test cases (305 regression tests + 8 new Phase 10.1 security hardening and attack-simulation tests) covering `TrustedKeyStore` key registration, SHA-256 fingerprint formatting, key revocation and rotation, self-signed replaced-key forgery attack detection, missing cryptography dependency rejection, independent signed checkpoint creation, malicious administrator rewritten ledger attack detection, truncated ledger attack detection, full 5-tier RBAC permission matrix testing, active locker integrity scanning, and standalone verifier exit codes (0, 1, 2, 3).  
+TEST RESULTS: 313 passed, 0 failed, 100% pass rate in 44.22s.  
+KNOWN ISSUES: None.  
+GIT COMMIT: 22a147a

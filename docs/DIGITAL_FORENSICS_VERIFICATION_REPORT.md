@@ -1,27 +1,29 @@
-# CCTV AI Intelligence Platform — Phase 10 Verification Report
-## Digital Forensics, Authenticity & Evidence Integrity
+# CCTV AI Intelligence Platform — Phase 10 & 10.1 Verification Report
+## Digital Forensics, Authenticity, Evidence Integrity & Security Hardening
 
-- **Version Baseline**: `1.0.0-alpha`
-- **Change ID**: `CHG-20261125-004`
+- **Version Baseline**: `1.0.1-alpha`
+- **Change IDs**: `CHG-20261125-004` (Phase 10 Core) & `CHG-20261125-005` (Phase 10.1 Security Hardening)
 - **Feature Scope**: `F-018` (Video Authenticity & Forensics) and `F-023` (Forensic Engine & Evidence Chain)
 - **Execution Date**: 2026-11-25
+- **Security Hardening Reference**: See [PHASE_10_1_SECURITY_HARDENING_REPORT.md](file:///C:/xampp/htdocs/cctv%20ai/docs/PHASE_10_1_SECURITY_HARDENING_REPORT.md)
 - **Verification Environment**: Windows 11 Enterprise (64-bit), Intel Core i5-12400 (6 Cores / 12 Threads), 16 GB DDR4 RAM, Intel UHD Graphics 730, OpenVINO™ 2026.4.1.
 
 ---
 
 ## 1. Executive Summary
 
-Phase 10 delivers the **Digital Forensics, Authenticity & Evidence Integrity Subsystem** for the CCTV AI Intelligence Platform, elevating the platform to version `1.0.0-alpha`. Engineered to withstand rigorous legal scrutiny, criminal court admissibility tests (under the Federal Rules of Evidence and equivalent state/national standards), and independent cross-examination by defense counsel, this subsystem provides mathematically verifiable proof of digital video authenticity, cryptographic evidence sealing, Merkle-style hash-chained chain-of-custody ledgers, and zero-dependency court verification utilities.
+Phase 10 and Phase 10.1 deliver the **Digital Forensics, Authenticity, Evidence Integrity & Security Hardening Subsystem** for the CCTV AI Intelligence Platform, elevating the platform to version `1.0.1-alpha`. Engineered to withstand rigorous legal scrutiny, criminal court admissibility tests (under the Federal Rules of Evidence and equivalent state/national standards), and independent cross-examination by defense counsel, this subsystem provides mathematically verifiable proof of digital video authenticity, cryptographic evidence sealing, Merkle-style hash-chained chain-of-custody ledgers, independent signed checkpoints, authoritative public key trust stores, 5-Tier Forensic RBAC, and court verification utilities.
 
 ### Core Architectural Guarantees
 1. **Mathematical File Integrity**: 64KB-buffered streaming SHA-256 hashing detects single-bit alterations, container trimming, byte modifications, or metadata injections.
 2. **Structural & Frame Cadence Auditing**: Real-time downscaled perceptual difference analysis detects duplicated/frozen sequences, abrupt visual splicing cuts, missing frame intervals, and Presentation Time Stamp (PTS) cadence anomalies (reversals, gaps, drift).
-3. **Controlled Evidence Vaulting**: Ingested evidence files in `storage/evidence/locker/<evidence_id>/` are locked with Windows filesystem read-only attributes (`FILE_ATTRIBUTE_READONLY`) and protected by 4-tier Role-Based Access Control (`INVESTIGATOR`, `ADMIN`, `SUPERVISOR`, `OPERATOR`, `VIEWER`).
-4. **Hardware-Protected Digital Signatures**: Asymmetric ECDSA (SECP256R1 / NIST P-256) digital signatures seal every manifest. Private signing keys are encrypted at rest using the native **Windows Data Protection API (DPAPI)** with custom application entropy.
-5. **Merkle-Style Hash-Chained Custody**: Every operator action (`INGEST`, `ACCESS`, `VIEW`, `VERIFY`, `EXPORT`, `UNAUTHORIZED_ATTEMPT`) is appended to an immutable JSON-Lines ledger where each record is cryptographically linked to the preceding record hash ($H_i = \text{SHA256}(H_{i-1} + \text{canonical}(event_i))$). Any record modification or deletion is immediately detected.
-6. **Phase 9 Derived Provenance Integration**: Enhanced footage is automatically classified as `DERIVED_ENHANCEMENT`, preserving the original source recording hash, enhancement parameters, software version, and judicial disclaimers. Enhanced recordings are never represented as raw original evidence.
-7. **Independent Standalone Verification**: Exports structured `.cctvevid` packages containing the media, signed manifest, detached signature, public key, custody ledger, and a zero-dependency Python 3 verification utility (`tools/verify_evidence.py`) executable on any external machine without the CCTV AI platform installed.
-8. **Forensic Veracity Boundary Disclaimer**: Enforces mandatory disclaimers recognizing that a valid hash and digital signature prove strictly that the acquired digital file has not been altered since acquisition; they do NOT prove that the recorded physical scene was authentic or un-staged prior to sensor capture.
+3. **Controlled Evidence Vaulting & Immutability**: Ingested evidence files in `storage/evidence/locker/<evidence_id>/` are locked with Windows filesystem read-only attributes (`FILE_ATTRIBUTE_READONLY`), monitored via active integrity scanning, and protected by 5-Tier Role-Based Access Control (`ADMIN`, `INVESTIGATOR`, `SUPERVISOR`, `OPERATOR`, `VIEWER`).
+4. **Hardware-Protected Digital Signatures**: Asymmetric ECDSA (SECP256R1 / NIST P-256) digital signatures seal every manifest. Private signing keys are encrypted at rest using the native **Windows Data Protection API (DPAPI)** with custom application entropy `b"CCTV_AI_FORENSIC_SIGNING_ENTROPY_V1"`.
+5. **Authoritative KeyStore & Fingerprints**: Eliminates package self-signed trust through `TrustedKeyStore` managing SHA-256 key fingerprints, operator identities, active key status, and revocation timestamps.
+6. **Merkle-Style Hash-Chained Custody with External Checkpoints**: Every operator action is appended to an immutable JSON-Lines ledger ($H_i = \text{SHA256}(H_{i-1} + \text{canonical}(event_i))$). Periodic signed checkpoints stored in `storage/evidence/checkpoints/<evidence_id>_checkpoints.json` outside the locker prevent malicious administrator ledger rewrite attacks.
+7. **Phase 9 Derived Provenance Integration**: Enhanced footage is automatically classified as `DERIVED_ENHANCEMENT`, preserving the original source recording hash, enhancement parameters, software version, and judicial disclaimers. Enhanced recordings are never represented as raw original evidence.
+8. **Independent Standalone Verification**: Exports structured `.cctvevid` packages containing the media, signed manifest, detached signature, public key, custody ledger, signed checkpoints, and a Python 3 verification utility (`tools/verify_evidence.py`) enforcing mandatory cryptographic checks and 4 clear exit codes.
+9. **Forensic Veracity Boundary Disclaimer**: Enforces mandatory disclaimers recognizing that a valid hash and digital signature prove strictly that the acquired digital file has not been altered since acquisition; they do NOT prove that the recorded physical scene was authentic or un-staged prior to sensor capture.
 
 ---
 

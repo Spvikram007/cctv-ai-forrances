@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 305
-- **Passed**: 305
+- **Total Test Cases**: 313
+- **Passed**: 313
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 40.73 seconds
+- **Total Duration**: 44.22 seconds
 
 ---
 
@@ -492,3 +492,13 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 ### 62. Forensics UI Integration Suite (`tests/integration/test_forensics_ui.py`)
 - `test_forensics_ui_initialization_and_table_population`: **PASSED** (0.07s) — Tests VideoForensicsWidget initialization, evidence table population, and row selection.
 - `test_forensics_ui_tabs_and_chain_verification`: **PASSED** (0.08s) — Tests detail tabs (Integrity, Custody, Signature, Legal) and hash-chain verification.
+
+### 63. Phase 10.1 Security Hardening & Attack Simulation Suite (`tests/unit/test_phase10_1_security_hardening.py`)
+- `test_trusted_keystore_crud_and_fingerprints`: **PASSED** (0.01s) — Validates `TrustedKeyStore` key registration, SHA-256 fingerprint formatting (`SHA256:...`), and active key lookup.
+- `test_key_revocation_and_rotation`: **PASSED** (0.01s) — Tests public key revocation, rejection of revoked keys, and atomic key rotation with automated status updates.
+- `test_replaced_key_self_signed_attack_detected`: **PASSED** (0.06s) — Simulates malicious attack where an attacker modifies media, generates a rogue keypair, and re-signs the manifest. Verifier identifies untrusted signing identity and exits with code 2 (`UNTRUSTED SIGNING IDENTITY`).
+- `test_missing_cryptography_dependency_returns_verification_incomplete`: **PASSED** (0.02s) — Verifies that missing cryptographic dependencies return `VERIFICATION INCOMPLETE` (Exit Code 3) and never report complete verification PASS.
+- `test_external_checkpoint_detects_rewritten_ledger_attack`: **PASSED** (0.04s) — Simulates malicious administrator modifying event 0 and re-computing all internal Merkle hashes. Independent external signed checkpoint detects the hash mismatch and flags `TAMPER DETECTED: Ledger history rewritten`.
+- `test_external_checkpoint_detects_truncated_ledger`: **PASSED** (0.03s) — Simulates attacker truncating earlier events. Checkpoint verification detects ledger truncation and flags `TAMPER DETECTED: Ledger truncated`.
+- `test_5_tier_rbac_permission_matrix`: **PASSED** (0.05s) — Tests full permission matrix across all 5 tiers (`ADMIN`, `INVESTIGATOR`, `SUPERVISOR`, `OPERATOR`, `VIEWER`) across ingest, export, checkpoints, and viewing.
+- `test_active_locker_integrity_scan_detects_tamper`: **PASSED** (0.05s) — Tests active background scanner auditing all evidence items and detecting bit-level modifications.
