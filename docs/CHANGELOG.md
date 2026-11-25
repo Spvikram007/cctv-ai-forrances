@@ -606,3 +606,68 @@ TESTS PERFORMED: Automated execution across 346 test cases (313 regression tests
 TEST RESULTS: 346 passed, 0 failed, 100% pass rate.  
 KNOWN ISSUES: None.  
 GIT COMMIT: 1da0398
+
+## [1.1.1-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-007  
+FEATURE ID: F-019  
+DATE: 2026-11-25  
+VERSION: 1.1.1-alpha  
+CHANGE TYPE: SECURITY HARDENING & ACCURACY CORRECTION  
+DESCRIPTION: Executed Phase 11.1 technical validation, CVE database correction, telemetry accuracy refinement, and scanner safety hardening pass on the Network Intelligence & Security Audit Engine (F-019).
+1. CVE Database Corrections:
+   - Verified CVE records against official National Vulnerability Database (NVD) and vendor security bulletins.
+   - Removed non-CCTV vulnerability CVE-2023-3820 (Pimcore open-source CMS SQL injection) entirely from the database.
+   - Reattributed CVE-2022-30563 to Dahua Technology (ONVIF WS-UsernameToken authentication replay flaw, Dahua Security Advisory Notice 1017); purged all erroneous Axis Communications attribution.
+   - Corrected classification of CVE-2020-25078 (D-Link DCS-2530L and DCS-2670L) to unauthenticated administrator password disclosure via direct HTTP GET request to `/config/getuser.cgi` (CVSS 7.5); strictly eliminated mischaracterization as generic remote code execution.
+   - Restricted CVE-2023-1518 strictly to CP PLUS KVMS Pro management client software (`<= 2.01.0.T.190521`); strictly eliminated false positives against standalone CP PLUS IP cameras.
+   - Annotated all CVE records with authoritative source URLs (`https://nvd.nist.gov/...`, `https://www.cve.org/...`, `https://www.dahuasecurity.com/...`) and official advisory publication dates.
+2. Vulnerability Matching Precision & Confidence Scoring:
+   - Enforced strict product-specific matching requiring matching manufacturer profile AND exact affected product series/model prefixes (`DS-2CD`, `IPC-`, `DCS-`, `KVMS Pro`).
+   - Manufacturer profile alone NEVER triggers vulnerability matching on unknown models.
+   - If firmware version is unknown, reported confidence is `POTENTIALLY_VULNERABLE` with mandatory status notice: `FIRMWARE VERSION UNKNOWN — EXPOSURE UNCONFIRMED`.
+   - Exact firmware comparisons against patch baselines report `CONFIRMED_VULNERABLE` for affected versions, and `UNAFFECTED` (0 score penalty) for patched firmware builds.
+3. Network Telemetry Distinctions:
+   - Distinguished real-time measured bandwidth (`measured_bandwidth_bps` from active stream worker packet counters or network interface deltas) from estimated stream bitrates (`estimated_bitrate_bps`), with explicit `bandwidth_source` labeling ("RTP_STREAM_COUNTER", "INTERFACE_COUNTER", "SNMP", "ESTIMATED").
+   - Implemented true RFC 3550 Section 6.4.1 interarrival packet jitter calculation via `record_rtp_packet()` using RTP timestamps ($D(i, j) = (R_j - S_j) - (R_i - S_i)$, $J = J + \frac{|D| - J}{16}$).
+   - Relabeled ping-only RTT variance as `mean_latency_variation_ms` ($\frac{1}{N-1}\sum |L_{i+1} - L_i|$), returning `None` for RFC 3550 jitter when RTP packet timing is unavailable.
+4. Security Posture Classification & Protocol Disaggregation:
+   - Disaggregated transport encryption into `SEC-001A` (Unencrypted RTSP Control Channel over TCP port 554 without TLS) and `SEC-001B` (Unencrypted RTP Video Media Transport without SRTP).
+   - Separated anonymous endpoint reachability from unauthenticated ONVIF administrative control access.
+   - Strictly prohibited intrusive active exploitation, denial of service, and credential brute-forcing.
+5. Scanner Safety Boundaries & Immutable Audit Logging:
+   - Implemented `compute_scan_scope()` with hard safety limit of 1,024 hosts per single scan pass and automatic bounded batch partitioning for enterprise subnets (`/22`, `/20`).
+   - Added operator confirmation prompts displaying CIDR, first/last usable IP, host count, and batch count whenever scan targets exceed standard /24 subnets or touch non-local interfaces.
+   - Implemented immutable audit logging appending structured JSONL records to `storage/logs/scan_audit.jsonl`.
+6. PySide6 Desktop Workspace Alignment:
+   - Updated Performance Telemetry tab to 8 columns: `IP Address`, `Avg Latency (ms)`, `Mean Latency Var (ms)`, `Packet Loss (%)`, `Measured BW (Mbps)`, `Bitrate Source`, `Uptime (%)`, `Congestion State`.
+   - Updated Security & Vulnerability Audit tab to 9 columns: `Host IP`, `CVE ID`, `CVSS`, `Vendor Profile`, `Confidence`, `Advisory Date`, `Vulnerability Details`, `Mitigation`, `Source URL`.
+   - Implemented colored confidence badges: Red for `CONFIRMED_VULNERABLE`, Amber for `POTENTIALLY_VULNERABLE`, Green for `UNAFFECTED`.
+FILES CREATED:
+- `docs/PHASE_11_1_SECURITY_ACCURACY_REPORT.md`
+FILES MODIFIED:
+- `VERSION`
+- `core/config/settings.py`
+- `engines/network_engine/__init__.py`
+- `engines/network_engine/scanner.py`
+- `engines/network_engine/diagnostics.py`
+- `engines/network_engine/monitor.py`
+- `engines/network_engine/security_audit.py`
+- `modules/network_intelligence/network_workspace_widget.py`
+- `tests/unit/test_network_discovery.py`
+- `tests/unit/test_network_monitor.py`
+- `tests/unit/test_network_security_audit.py`
+- `tests/integration/test_network_intelligence_ui.py`
+- `docs/FEATURE_REGISTER.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/MODULE_SPECIFICATIONS.md`
+- `docs/TEST_REPORTS.md`
+- `docs/CHANGELOG.md`
+FILES DELETED: None
+DATABASE CHANGES: None.
+DEPENDENCIES CHANGED: None.
+TESTS PERFORMED: Full regression suite execution across 356 automated test cases (257 unit tests, 54 integration tests, 45 performance benchmarks). 100% pass rate in 49.38s.
+TEST RESULTS: 356 passed, 0 failed, 100% pass rate.
+KNOWN ISSUES: None.
+GIT COMMIT: Pending commit for CHG-20261125-007

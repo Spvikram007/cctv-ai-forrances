@@ -49,7 +49,7 @@ def test_validate_cidr_block_rejections():
         validate_cidr_block("127.0.0.0/8")
 
     # Exceeding max hosts
-    with pytest.raises(ValueError, match="exceeding max limit"):
+    with pytest.raises(ValueError, match="exceeding single-pass limit"):
         validate_cidr_block("192.168.1.0/24", max_hosts=100)
 
 
@@ -176,3 +176,56 @@ def test_network_scanner_mocked_scan():
     assert results[0].device_type == DeviceType.GATEWAY
     assert results[1].ip_address == "192.168.10.10"
     assert results[1].device_type == DeviceType.IP_CAMERA
+
+
+def test_compute_scan_scope_boundaries_and_batching():
+    """Verify compute_scan_scope calculates usable hosts, boundaries, and safety batches."""
+    from engines.network_engine.scanner import compute_scan_scope
+
+    # 1. Standard /24
+    scope_24 = compute_scan_scope("192.168.1.0/24")
+    assert scope_24.total_hosts == 256
+    assert scope_24.first_usable_ip == "192.168.1.1"
+    assert scope_24.last_usable_ip == "192.168.1.254"
+    assert scope_24.batch_count == 1
+
+    # 2. Scope /22 (1024 addresses -> 1 batch of 1024)
+    scope_22 = compute_scan_scope("10.0.0.0/22")
+    assert scope_22.total_hosts == 1024
+    assert scope_22.first_usable_ip == "10.0.0.1"
+    assert scope_22.last_usable_ip == "10.0.3.254"
+    assert scope_22.batch_count == 1
+    assert scope_22.requires_operator_confirmation is True
+
+    # 3. Large scope /20 (4096 addresses -> 4 batches of 1024)
+    scope_20 = compute_scan_scope("10.10.0.0/20")
+    assert scope_20.total_hosts == 4096
+    assert scope_20.batch_count == 4
+    assert scope_20.requires_operator_confirmation is True
+
+
+def test_record_scan_audit_logging(tmp_path):
+    """Verify record_scan_audit writes immutable structured audit entries."""
+    import os
+    import json
+    from engines.network_engine.scanner import compute_scan_scope, record_scan_audit
+
+    audit_file = str(tmp_path / "test_scan_audit.jsonl")
+    scope = compute_scan_scope("192.168.50.0/24")
+    record_scan_audit(
+        scope=scope,
+        discovered_count=5,
+        operator="test_operator",
+        audit_log_path=audit_file,
+    )
+
+    assert os.path.exists(audit_file)
+    with open(audit_file, "r", encoding="utf-8") as f:
+        line = f.readline().strip()
+        record = json.loads(line)
+
+    assert record["cidr"] == "192.168.50.0/24"
+    assert record["total_hosts"] == 256
+    assert record["discovered_devices"] == 5
+    assert record["operator"] == "test_operator"
+    assert "timestamp" in record

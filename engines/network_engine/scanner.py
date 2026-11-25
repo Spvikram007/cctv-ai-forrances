@@ -12,6 +12,9 @@ import platform
 import subprocess
 import ipaddress
 import time
+import json
+import math
+from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional, Set, Tuple, Callable
@@ -160,10 +163,28 @@ class DiscoveredNetworkDevice:
         return d
 
 
+@dataclass
+class ScanScope:
+    """Represents a validated network scan scope with batching boundaries."""
+    cidr: str
+    network_address: str
+    broadcast_address: str
+    first_usable_ip: str
+    last_usable_ip: str
+    total_hosts: int
+    batch_count: int
+    batches: List[str]
+    is_local_subnet: bool
+    requires_operator_confirmation: bool
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
 def validate_cidr_block(cidr: str, max_hosts: int = 1024) -> ipaddress.IPv4Network:
     """
-    Validates a CIDR string strictly.
-    Rejects malformed strings, loopback, multicast, 0.0.0.0/0, and excessively large ranges.
+    Validates a CIDR string strictly for a single scan pass.
+    Rejects malformed strings, loopback, multicast, 0.0.0.0/0, and single passes exceeding max_hosts.
     """
     if not cidr or not isinstance(cidr, str):
         raise ValueError("CIDR network string cannot be empty.")
@@ -184,14 +205,119 @@ def validate_cidr_block(cidr: str, max_hosts: int = 1024) -> ipaddress.IPv4Netwo
         raise ValueError(f"Loopback network '{cidr_clean}' is not an authorized scan target.")
     if network.prefixlen == 0:
         raise ValueError("0.0.0.0/0 global Internet scan is strictly prohibited.")
-    if network.prefixlen < 20:
-        raise ValueError(f"CIDR prefix /{network.prefixlen} exceeds safe single-pass boundary (minimum /20).")
+    if network.prefixlen < 16:
+        raise ValueError(f"CIDR prefix /{network.prefixlen} exceeds safe authorized boundary (minimum /16).")
 
     num_hosts = network.num_addresses
     if num_hosts > max_hosts:
-        raise ValueError(f"Network '{cidr_clean}' contains {num_hosts} addresses, exceeding max limit of {max_hosts}.")
+        raise ValueError(
+            f"Network '{cidr_clean}' contains {num_hosts} addresses, exceeding single-pass limit of {max_hosts}. "
+            f"Divide larger networks into bounded batches using compute_scan_scope()."
+        )
 
     return network
+
+
+def compute_scan_scope(
+    cidr: str,
+    max_batch_size: int = 1024,
+    local_subnets: Optional[List[str]] = None,
+) -> ScanScope:
+    """
+    Computes authorized scan scope, dividing larger ranges into bounded batches of at most 1,024 hosts.
+    Determines whether operator confirmation is required.
+    """
+    if not cidr or not isinstance(cidr, str):
+        raise ValueError("CIDR network string cannot be empty.")
+
+    cidr_clean = cidr.strip()
+    try:
+        network = ipaddress.ip_network(cidr_clean, strict=False)
+    except ValueError as e:
+        raise ValueError(f"Invalid IPv4 CIDR network format '{cidr_clean}': {e}")
+
+    if not isinstance(network, ipaddress.IPv4Network):
+        raise ValueError(f"Only IPv4 networks are supported: '{cidr_clean}'")
+
+    if network.is_multicast:
+        raise ValueError(f"Multicast network '{cidr_clean}' is not an authorized scan target.")
+    if network.is_loopback:
+        raise ValueError(f"Loopback network '{cidr_clean}' is not an authorized scan target.")
+    if network.prefixlen == 0:
+        raise ValueError("0.0.0.0/0 global Internet scan is strictly prohibited.")
+    if network.prefixlen < 16:
+        raise ValueError(f"CIDR prefix /{network.prefixlen} exceeds safe authorized boundary (minimum /16).")
+
+    all_usable = list(network.hosts()) if network.num_addresses <= 1024 else []
+    first_ip = str(all_usable[0]) if all_usable else str(network.network_address + 1)
+    last_ip = str(all_usable[-1]) if all_usable else str(network.broadcast_address - 1)
+
+    batches: List[str] = []
+    if network.num_addresses <= max_batch_size:
+        batches.append(str(network))
+    else:
+        # Determine prefix for batching (e.g. max_batch_size 1024 -> prefix 22; 256 -> prefix 24)
+        batch_prefix = 32 - int(math.log2(max_batch_size))
+        target_prefix = max(network.prefixlen + 1, batch_prefix)
+        for subnet in network.subnets(new_prefix=target_prefix):
+            batches.append(str(subnet))
+
+    locals_list = local_subnets if local_subnets is not None else get_local_subnets()
+    is_local = False
+    for l in locals_list:
+        try:
+            loc_net = ipaddress.ip_network(l, strict=False)
+            if network.subnet_of(loc_net) or loc_net.subnet_of(network):
+                is_local = True
+                break
+        except Exception:
+            pass
+
+    requires_conf = (not is_local) or (network.num_addresses > 256)
+
+    return ScanScope(
+        cidr=str(network),
+        network_address=str(network.network_address),
+        broadcast_address=str(network.broadcast_address),
+        first_usable_ip=first_ip,
+        last_usable_ip=last_ip,
+        total_hosts=network.num_addresses,
+        batch_count=len(batches),
+        batches=batches,
+        is_local_subnet=is_local,
+        requires_operator_confirmation=requires_conf,
+    )
+
+
+def record_scan_audit(
+    scope: ScanScope,
+    discovered_count: int,
+    operator: str = "Operator",
+    audit_log_path: Optional[str] = None,
+) -> None:
+    """Preserves immutable audit records of all executed network scans."""
+    try:
+        if audit_log_path:
+            log_file = Path(audit_log_path)
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            log_dir = Path("storage/logs")
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / "scan_audit.jsonl"
+
+        record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "operator": operator,
+            "cidr": scope.cidr,
+            "total_hosts": scope.total_hosts,
+            "batch_count": scope.batch_count,
+            "is_local_subnet": scope.is_local_subnet,
+            "discovered_devices": discovered_count,
+        }
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+    except Exception as e:
+        logger.debug("Failed recording scan audit: %s", e)
 
 
 def get_default_gateway() -> Optional[str]:
@@ -486,53 +612,59 @@ class NetworkScanner:
     ) -> List[DiscoveredNetworkDevice]:
         """
         Executes a multi-threaded subnet scan over an authorized CIDR block.
-        Detects duplicate IPs, resolves MACs and vendors, and classifies devices.
+        Divides networks exceeding 1,024 hosts into bounded batches.
+        Detects duplicate IPs, resolves MACs and vendors, and records scan audit logs.
         """
-        network = validate_cidr_block(cidr)
-        all_hosts = list(network.hosts())
-        total_hosts = len(all_hosts)
+        scope = compute_scan_scope(cidr, max_batch_size=1024)
         default_gateway = get_default_gateway()
         arp_cache = self.get_system_arp_table()
 
         logger.info(
-            "Starting subnet scan on %s (%d hosts) with %d threads",
-            cidr,
-            total_hosts,
+            "Starting subnet scan on %s (%d total hosts across %d batch(es)) with %d threads",
+            scope.cidr,
+            scope.total_hosts,
+            scope.batch_count,
             self.max_threads,
         )
 
         discovered: List[DiscoveredNetworkDevice] = []
-        completed_count = 0
+        total_scanned = 0
 
-        with ThreadPoolExecutor(max_workers=min(self.max_threads, total_hosts or 1)) as executor:
-            future_to_ip = {
-                executor.submit(
-                    self.probe_host,
-                    str(host_ip),
-                    ports_to_check,
-                    default_gateway,
-                    arp_cache,
-                ): str(host_ip)
-                for host_ip in all_hosts
-            }
+        for batch_cidr in scope.batches:
+            batch_net = ipaddress.ip_network(batch_cidr, strict=False)
+            all_hosts = list(batch_net.hosts()) if batch_net.num_addresses > 2 else [batch_net.network_address]
+            total_hosts = len(all_hosts)
 
-            for future in as_completed(future_to_ip):
-                completed_count += 1
-                try:
-                    dev = future.result()
-                    if dev:
-                        discovered.append(dev)
-                except Exception as e:
-                    logger.debug("Host probe exception: %s", e)
+            with ThreadPoolExecutor(max_workers=min(self.max_threads, total_hosts or 1)) as executor:
+                future_to_ip = {
+                    executor.submit(
+                        self.probe_host,
+                        str(host_ip),
+                        ports_to_check,
+                        default_gateway,
+                        arp_cache,
+                    ): str(host_ip)
+                    for host_ip in all_hosts
+                }
 
-                if progress_callback and (completed_count % 10 == 0 or completed_count == total_hosts):
-                    progress_callback(completed_count, total_hosts, list(discovered))
+                for future in as_completed(future_to_ip):
+                    total_scanned += 1
+                    try:
+                        dev = future.result()
+                        if dev:
+                            discovered.append(dev)
+                    except Exception as e:
+                        logger.debug("Host probe exception: %s", e)
+
+                    if progress_callback and (total_scanned % 10 == 0 or total_scanned == scope.total_hosts):
+                        progress_callback(total_scanned, scope.total_hosts, list(discovered))
 
         # Perform Duplicate IP Detection Analysis
         self._detect_duplicate_ips(discovered, arp_cache)
 
         # Sort discovered devices by IP address
         discovered.sort(key=lambda d: ipaddress.IPv4Address(d.ip_address))
+        record_scan_audit(scope, len(discovered))
         logger.info("Scan completed on %s: discovered %d active devices", cidr, len(discovered))
         return discovered
 

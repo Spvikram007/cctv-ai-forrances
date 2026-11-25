@@ -63,6 +63,11 @@ class ComprehensiveDeviceAuditReport:
     masked_rtsp_url: str = ""
     summary: str = ""
     primary_root_cause: DiagnosticRootCause = DiagnosticRootCause.SUCCESS
+    rtsp_control_encrypted: bool = False
+    rtp_media_encrypted: bool = False
+    srtp_available: bool = False
+    onvif_auth_enforced: bool = True
+    auth_mechanism: str = "Digest"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -78,6 +83,11 @@ class ComprehensiveDeviceAuditReport:
             "masked_rtsp_url": self.masked_rtsp_url,
             "summary": self.summary,
             "primary_root_cause": self.primary_root_cause.value,
+            "rtsp_control_encrypted": self.rtsp_control_encrypted,
+            "rtp_media_encrypted": self.rtp_media_encrypted,
+            "srtp_available": self.srtp_available,
+            "onvif_auth_enforced": self.onvif_auth_enforced,
+            "auth_mechanism": self.auth_mechanism,
         }
 
 
@@ -455,6 +465,16 @@ class DeviceDiagnosticEngine:
 
         masked_rtsp = mask_credentials(f"rtsp://{username}:{password}@{ip_address}:{rtsp_port}/{rtsp_path.lstrip('/')}") if username else f"rtsp://{ip_address}:{rtsp_port}/{rtsp_path.lstrip('/')}"
 
+        # Determine encryption & authentication attributes
+        rtsp_control_enc = (rtsp_port == 322)
+        onvif_enforced = True
+        auth_mech = "Digest"
+        for p in probes:
+            if "Basic" in p.details:
+                auth_mech = "Basic"
+            if p.protocol == "ONVIF" and p.root_cause == DiagnosticRootCause.AUTHENTICATION_FAILURE:
+                onvif_enforced = True
+
         return ComprehensiveDeviceAuditReport(
             ip_address=ip_address,
             mac_address=mac_address,
@@ -464,4 +484,9 @@ class DeviceDiagnosticEngine:
             masked_rtsp_url=masked_rtsp,
             summary=summary,
             primary_root_cause=primary_cause,
+            rtsp_control_encrypted=rtsp_control_enc,
+            rtp_media_encrypted=False,
+            srtp_available=False,
+            onvif_auth_enforced=onvif_enforced,
+            auth_mechanism=auth_mech,
         )

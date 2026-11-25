@@ -40,7 +40,9 @@ from engines.network_engine.scanner import (
     DiscoveredNetworkDevice,
     DeviceType,
     DeviceStatus,
+    ScanScope,
     validate_cidr_block,
+    compute_scan_scope,
     get_default_gateway,
     get_local_subnets,
 )
@@ -58,6 +60,7 @@ from engines.network_engine.security_audit import (
     NetworkSecurityAuditor,
     SecurityAuditReport,
     AuditSeverity,
+    CVEConfidence,
 )
 from engines.network_engine.fault_analyzer import (
     AutomatedFaultAnalyzer,
@@ -400,9 +403,9 @@ class NetworkIntelligenceWidget(QWidget):
         layout.addWidget(lbl_info)
 
         self.tbl_telemetry = QTableWidget()
-        self.tbl_telemetry.setColumnCount(7)
+        self.tbl_telemetry.setColumnCount(8)
         self.tbl_telemetry.setHorizontalHeaderLabels([
-            "IP Address", "Avg Latency (ms)", "Jitter (ms)", "Packet Loss (%)", "Bandwidth (Mbps)", "Uptime (%)", "Congestion State"
+            "IP Address", "Avg Latency (ms)", "Mean Latency Var (ms)", "Packet Loss (%)", "Measured BW (Mbps)", "Bitrate Source", "Uptime (%)", "Congestion State"
         ])
         self.tbl_telemetry.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tbl_telemetry.setStyleSheet(
@@ -480,9 +483,9 @@ class NetworkIntelligenceWidget(QWidget):
         layout.addWidget(lbl_cve)
 
         self.tbl_cve = QTableWidget()
-        self.tbl_cve.setColumnCount(7)
+        self.tbl_cve.setColumnCount(9)
         self.tbl_cve.setHorizontalHeaderLabels([
-            "Host IP", "CVE ID", "CVSS", "Vendor Profile", "Confidence", "Vulnerability Details", "Mitigation"
+            "Host IP", "CVE ID", "CVSS", "Vendor Profile", "Confidence", "Advisory Date", "Vulnerability Details", "Mitigation", "Source URL"
         ])
         self.tbl_cve.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tbl_cve.setStyleSheet(
@@ -500,10 +503,29 @@ class NetworkIntelligenceWidget(QWidget):
     def _start_network_scan(self) -> None:
         cidr = self.txt_cidr.text().strip()
         try:
-            validate_cidr_block(cidr)
+            scope = compute_scan_scope(cidr)
         except ValueError as e:
             QMessageBox.warning(self, "Invalid Scan Target", str(e))
             return
+
+        if scope.requires_operator_confirmation:
+            confirm_msg = (
+                f"Target CIDR: {scope.cidr}\n"
+                f"Total Usable Hosts: {scope.total_hosts}\n"
+                f"IP Range: {scope.first_usable_ip} - {scope.last_usable_ip}\n"
+                f"Execution Batches: {scope.batch_count} (Safety limit: 1024 hosts/batch)\n\n"
+                f"Notice: This scan scope exceeds the single standard C-class subnet or touches non-local ranges. "
+                f"Do you confirm initiating this bounded network scan?"
+            )
+            reply = QMessageBox.question(
+                self,
+                "Operator Authorization Required",
+                confirm_msg,
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
 
         self.btn_scan.setEnabled(False)
         self.progress_bar.setVisible(True)
@@ -624,11 +646,17 @@ class NetworkIntelligenceWidget(QWidget):
         histories = self.monitor.get_all_histories()
         self.tbl_telemetry.setRowCount(len(histories))
         for row, (ip, hist) in enumerate(histories.items()):
+            latest = hist.get_latest_sample()
+            bw_source = latest.bandwidth_source if latest else "UNKNOWN"
+            measured_mbps = hist.get_current_measured_bandwidth_mbps()
+            bw_disp = f"{measured_mbps:.2f}" if measured_mbps > 0 else f"{hist.get_current_bandwidth_mbps():.2f}"
+
             item_ip = QTableWidgetItem(ip)
             item_lat = QTableWidgetItem(f"{hist.get_average_latency():.1f}")
-            item_jit = QTableWidgetItem(f"{hist.get_jitter_ms():.1f}")
+            item_jit = QTableWidgetItem(f"{hist.get_mean_latency_variation_ms():.1f}")
             item_loss = QTableWidgetItem(f"{hist.get_average_packet_loss():.1f}%")
-            item_bw = QTableWidgetItem(f"{hist.get_current_bandwidth_mbps():.2f}")
+            item_bw = QTableWidgetItem(bw_disp)
+            item_source = QTableWidgetItem(bw_source)
             item_up = QTableWidgetItem(f"{hist.get_uptime_percentage():.1f}%")
 
             is_cong = hist.is_congested()
@@ -640,8 +668,9 @@ class NetworkIntelligenceWidget(QWidget):
             self.tbl_telemetry.setItem(row, 2, item_jit)
             self.tbl_telemetry.setItem(row, 3, item_loss)
             self.tbl_telemetry.setItem(row, 4, item_bw)
-            self.tbl_telemetry.setItem(row, 5, item_up)
-            self.tbl_telemetry.setItem(row, 6, item_cong)
+            self.tbl_telemetry.setItem(row, 5, item_source)
+            self.tbl_telemetry.setItem(row, 6, item_up)
+            self.tbl_telemetry.setItem(row, 7, item_cong)
 
     # Diagnostics & Faults
     def _start_diagnostics_audit(self) -> None:
@@ -753,23 +782,27 @@ class NetworkIntelligenceWidget(QWidget):
             item_conf = QTableWidgetItem(cve.confidence)
 
             # Color code confidence
-            if cve.confidence == "HIGH":
+            if cve.confidence in (CVEConfidence.CONFIRMED_VULNERABLE.value, "HIGH"):
                 item_conf.setForeground(QColor("#f85149"))
-            elif cve.confidence == "MEDIUM":
+            elif cve.confidence in (CVEConfidence.POTENTIALLY_VULNERABLE.value, "MEDIUM"):
                 item_conf.setForeground(QColor("#d29922"))
             else:
-                item_conf.setForeground(QColor("#8b949e"))
+                item_conf.setForeground(QColor("#3fb950"))
 
+            item_date = QTableWidgetItem(getattr(cve, "advisory_date", "N/A"))
             item_desc = QTableWidgetItem(cve.description)
             item_mit = QTableWidgetItem(cve.mitigation)
+            item_url = QTableWidgetItem(getattr(cve, "source_url", "N/A"))
 
             self.tbl_cve.setItem(row, 0, item_ip)
             self.tbl_cve.setItem(row, 1, item_id)
             self.tbl_cve.setItem(row, 2, item_cvss)
             self.tbl_cve.setItem(row, 3, item_vendor)
             self.tbl_cve.setItem(row, 4, item_conf)
-            self.tbl_cve.setItem(row, 5, item_desc)
-            self.tbl_cve.setItem(row, 6, item_mit)
+            self.tbl_cve.setItem(row, 5, item_date)
+            self.tbl_cve.setItem(row, 6, item_desc)
+            self.tbl_cve.setItem(row, 7, item_mit)
+            self.tbl_cve.setItem(row, 8, item_url)
 
         self.tabs.setCurrentIndex(4)
         QMessageBox.information(self, "Security Audit Complete", f"Audited {len(reports)} hosts.")

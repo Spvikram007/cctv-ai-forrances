@@ -9,6 +9,9 @@ from engines.network_engine.scanner import (
     DiscoveredNetworkDevice,
     NetworkScanner,
     validate_cidr_block,
+    compute_scan_scope,
+    record_scan_audit,
+    ScanScope,
     get_default_gateway,
     get_local_subnets,
 )
@@ -29,6 +32,7 @@ from engines.network_engine.security_audit import (
     SecurityIssue,
     AuditSeverity,
     CVEFinding,
+    CVEConfidence,
 )
 from engines.network_engine.fault_analyzer import (
     AutomatedFaultAnalyzer,
@@ -43,6 +47,9 @@ __all__ = [
     "DiscoveredNetworkDevice",
     "NetworkScanner",
     "validate_cidr_block",
+    "compute_scan_scope",
+    "record_scan_audit",
+    "ScanScope",
     "get_default_gateway",
     "get_local_subnets",
     "DeviceDiagnosticEngine",
@@ -57,6 +64,7 @@ __all__ = [
     "SecurityIssue",
     "AuditSeverity",
     "CVEFinding",
+    "CVEConfidence",
     "AutomatedFaultAnalyzer",
     "FaultType",
     "FaultAnalysisReport",

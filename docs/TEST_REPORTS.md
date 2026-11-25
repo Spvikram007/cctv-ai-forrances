@@ -5,12 +5,12 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 313
-- **Passed**: 313
+- **Total Test Cases**: 356
+- **Passed**: 356
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 44.22 seconds
+- **Total Duration**: 49.38 seconds
 
 ---
 
@@ -505,11 +505,13 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 
 ### 64. Network Discovery & Subnet Scanner Suite (`tests/unit/test_network_discovery.py`)
 - `test_validate_cidr_block_valid`: **PASSED** (0.00s) — Validates safe IPv4 CIDR blocks (/24, /28) and host counts.
-- `test_validate_cidr_block_rejections`: **PASSED** (0.00s) — Rejects empty strings, invalid syntax, multicast (224.0.0.0/24), loopback (127.0.0.0/8), 0.0.0.0/0 global scans, and ranges exceeding max host boundaries.
+- `test_validate_cidr_block_rejections`: **PASSED** (0.00s) — Rejects empty strings, invalid syntax, multicast (224.0.0.0/24), loopback (127.0.0.0/8), 0.0.0.0/0 global scans, and ranges exceeding single-pass limits.
 - `test_lookup_vendor_by_mac`: **PASSED** (0.00s) — Maps IEEE OUI prefixes to hardware manufacturers (Hikvision, Dahua, CP PLUS, Axis, Cisco, Unknown).
 - `test_classify_device`: **PASSED** (0.00s) — Verifies heuristic classification logic for GATEWAY (ports 53/80), IP_CAMERA (RTSP 554), NVR (port 37777), SWITCH (Cisco OUI, SSH/HTTP), and HOST.
 - `test_detect_duplicate_ips`: **PASSED** (0.00s) — Flags duplicate IP and MAC address collisions across distinct network nodes.
 - `test_network_scanner_mocked_scan`: **PASSED** (0.01s) — Tests multi-threaded subnet scanning with progress callbacks over authorized CIDR ranges.
+- `test_compute_scan_scope_boundaries_and_batching`: **PASSED** (0.00s) — Verifies usable host bounds, non-local confirmation flags, and enterprise batch partitioning (/22, /20).
+- `test_record_scan_audit_logging`: **PASSED** (0.00s) — Verifies immutable structured JSONL audit trail recording in `storage/logs/scan_audit.jsonl`.
 
 ### 65. CCTV Device Diagnostics Suite (`tests/unit/test_network_diagnostics.py`)
 - `test_mask_credentials`: **PASSED** (0.00s) — Verifies passwords in RTSP URLs and connection strings are masked (`rtsp://user:***@host:port/path`).
@@ -522,16 +524,24 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `test_comprehensive_device_audit`: **PASSED** (0.00s) — Tests multi-protocol synthesis into ComprehensiveDeviceAuditReport.
 
 ### 66. Network Performance Monitoring Suite (`tests/unit/test_network_monitor.py`)
-- `test_device_telemetry_history_metrics`: **PASSED** (0.00s) — Tests rolling calculation of average latency, jitter (RFC 3550), packet loss %, bandwidth (Mbps), and uptime percentage.
+- `test_device_telemetry_history_metrics`: **PASSED** (0.00s) — Tests rolling calculation of average latency, mean latency variation, packet loss %, measured bandwidth, and uptime percentage.
+- `test_rfc3550_smoothed_interarrival_jitter`: **PASSED** (0.00s) — Verifies true RFC 3550 interarrival jitter calculation using RTP timestamps and smoothing factor 1/16.
+- `test_measured_vs_estimated_bandwidth`: **PASSED** (0.00s) — Validates strict distinction between real measured packet counter bandwidth and estimated stream bitrate with explicit source tags.
 - `test_congestion_detection`: **PASSED** (0.00s) — Tests dynamic congestion alerts triggered when latency > 150ms or packet loss > 5.0%.
 - `test_chart_data_conversion`: **PASSED** (0.00s) — Validates export of synchronized time-series arrays for PySide6 chart rendering.
 - `test_network_performance_monitor_registration`: **PASSED** (0.00s) — Tests monitor device registration, lifecycle, external telemetry injection, and alert callbacks.
 
 ### 67. Network Security & Vulnerability Audit Suite (`tests/unit/test_network_security_audit.py`)
-- `test_audit_insecure_protocols`: **PASSED** (0.00s) — Flags unencrypted RTSP (SEC-001) and plaintext HTTP management (SEC-002) with security score 70 (Grade C).
+- `test_audit_insecure_protocols_disaggregation`: **PASSED** (0.00s) — Separates unencrypted RTSP control (SEC-001A) from unencrypted RTP media transport (SEC-001B), plus insecure HTTP (SEC-002) with security score 65 (Grade D).
 - `test_audit_exposed_telnet`: **PASSED** (0.00s) — Flags legacy Telnet port 23 (SEC-003) as HIGH severity issue.
 - `test_audit_unauthenticated_onvif_and_default_creds`: **PASSED** (0.00s) — Flags unauthenticated ONVIF access (SEC-005) and default credentials (SEC-006) as CRITICAL severity (Grade F).
-- `test_cve_mapping_confidence_scoring`: **PASSED** (0.00s) — Enforces strict confidence scoring: HIGH for confirmed firmware match, MEDIUM for unknown firmware with model match, and LOW for vendor profile match only.
+- `test_cve_database_integrity_and_authoritative_sources`: **PASSED** (0.00s) — Validates all CVE records have valid HTTPS source URLs, official advisory publication dates, and CVSS scores.
+- `test_cve_pimcore_3820_removed_from_database`: **PASSED** (0.00s) — Verifies complete elimination of Pimcore web CMS CVE-2023-3820 from CCTV intelligence engine.
+- `test_cve_2022_30563_attributed_to_dahua_not_axis`: **PASSED** (0.00s) — Verifies attribution to Dahua Technology ONVIF WS-UsernameToken replay (Notice 1017) and rejects false match on Axis devices.
+- `test_cve_2020_25078_dlink_password_disclosure_not_rce`: **PASSED** (0.00s) — Verifies D-Link DCS-2530L/2670L classification as administrator password disclosure via `/config/getuser.cgi` (CVSS 7.5), not RCE.
+- `test_cve_2023_1518_restricted_to_cpplus_kvms_pro_only`: **PASSED** (0.00s) — Restricts CVE-2023-1518 strictly to CP PLUS KVMS Pro VMS software, rejecting false positives on CP PLUS cameras.
+- `test_firmware_version_matching_precision`: **PASSED** (0.00s) — Enforces exact firmware version comparisons: CONFIRMED_VULNERABLE for < V5.5.800, UNAFFECTED for >= V5.5.800, and POTENTIALLY_VULNERABLE with unconfirmed notice for unknown firmware.
+- `test_vendor_alone_never_flags_vulnerability`: **PASSED** (0.00s) — Guarantees device is never marked vulnerable based on manufacturer profile alone with unknown model.
 - `test_clean_device_security_score`: **PASSED** (0.00s) — Validates hardened host (HTTPS only) achieves perfect score of 100 (Grade A).
 
 ### 68. Automated Fault Isolation Suite (`tests/unit/test_network_fault_analyzer.py`)

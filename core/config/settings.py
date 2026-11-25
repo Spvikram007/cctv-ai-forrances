@@ -86,7 +86,7 @@ class SecuritySettings(BaseSettings):
 class PlatformSettings(BaseSettings):
     """Master application configuration container."""
     app_name: str = "CCTV AI Intelligence Platform"
-    app_version: str = "1.1.0-alpha"
+    app_version: str = "1.1.1-alpha"
     environment: Literal["development", "production", "testing"] = "development"
     debug: bool = False
 
