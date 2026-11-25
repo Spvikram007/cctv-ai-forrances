@@ -84,6 +84,7 @@ class ChannelRecordingWorker(threading.Thread):
         self._segment_index: int = 0
         self._frames_written_segment: int = 0
         self._volume_id: Optional[str] = None
+        self._has_custom_output_dir: bool = output_dir is not None
 
         self._init_volume()
 
@@ -113,7 +114,10 @@ class ChannelRecordingWorker(threading.Thread):
     def _get_segment_filepath(self, start_dt: datetime) -> str:
         """Generates structured file path: recordings/{channel_id}/{YYYYMMDD}/rec_{channel}_{YYYYMMDD_HHMMSS}.mp4"""
         date_folder = start_dt.strftime("%Y%m%d")
-        folder = Path(self.base_output_dir) / self.channel_id / date_folder
+        base_dir = getattr(self, "_current_dest_dir", None)
+        if not base_dir:
+            base_dir = str(Path(self.base_output_dir) / self.channel_id / date_folder)
+        folder = Path(base_dir)
         folder.mkdir(parents=True, exist_ok=True)
 
         time_str = start_dt.strftime("%Y%m%d_%H%M%S")
@@ -123,6 +127,26 @@ class ChannelRecordingWorker(threading.Thread):
     def _start_new_segment(self, first_frame: np.ndarray, timestamp: float) -> None:
         """Opens a new MP4 container segment and logs the database record."""
         self._close_current_segment()
+
+        # Phase 13 Enterprise Storage dynamic allocation & failover resolution
+        try:
+            should_use_storage_service = True
+            if self._has_custom_output_dir:
+                from database.database_manager import db_manager
+                from database.models.storage import StorageAllocation
+                with db_manager.get_session() as session:
+                    alloc = session.query(StorageAllocation).filter_by(channel_id=self.channel_id).first()
+                    should_use_storage_service = alloc is not None
+
+            if should_use_storage_service:
+                from engines.storage_engine.storage_service import enterprise_storage_service
+                dest_vol, dest_dir, is_failover = enterprise_storage_service.get_recording_destination(self.channel_id)
+                if dest_vol:
+                    self._volume_id = dest_vol.id
+                    self._current_dest_dir = dest_dir
+                    self._is_failover_segment = is_failover
+        except Exception:
+            pass
 
         h, w, _ = first_frame.shape
         self._segment_start_time = datetime.now(timezone.utc)
@@ -202,6 +226,25 @@ class ChannelRecordingWorker(threading.Thread):
                     "duration_sec": duration,
                     "sha256": sha256,
                 })
+
+                # Phase 13 Enterprise Storage cryptographic manifest creation
+                try:
+                    from engines.storage_engine.storage_service import enterprise_storage_service
+                    enterprise_storage_service.seal_segment(
+                        channel_id=self.channel_id,
+                        volume_id=self._volume_id or "default",
+                        file_path=self._current_segment_path,
+                        start_time=self._segment_start_time,
+                        end_time=end_time,
+                        sha256_hash=sha256,
+                        duration_sec=duration,
+                        file_size_bytes=file_size,
+                        is_failover=getattr(self, "_is_failover_segment", False),
+                        recording_id=self._current_recording_id,
+                    )
+                except Exception as e:
+                    logger.debug("Segment manifest generation notice: %s", e)
+
                 logger.info("Sealed recording segment for [%s] (Duration: %ds, Size: %.2fMB, Hash: %s...)",
                             self.channel_id, duration, file_size / (1024 * 1024), sha256[:12] if sha256 else "None")
 

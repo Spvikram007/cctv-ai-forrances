@@ -28,6 +28,7 @@ from modules.video_forensics.forensics_workspace_widget import VideoForensicsWid
 from modules.video_enhancement.enhancement_widget import VideoEnhancementWidget
 from modules.network_intelligence.network_workspace_widget import NetworkIntelligenceWidget
 from modules.alarm_management.alarm_workspace_widget import AlarmManagementWidget
+from modules.storage_management.storage_workspace_widget import StorageManagementWidget
 from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
 from engines.video_engine.stream_manager import stream_manager
 from engines.video_engine.playback_controller import playback_controller
@@ -162,8 +163,12 @@ class MainWindow(QMainWindow):
         self.alarm_widget.request_playback_seek.connect(self._on_playback_seek_requested)
         self.stack.addWidget(self.alarm_widget)
 
-        # Views 10 to 14: Module Placeholders
-        for idx, (title, desc) in enumerate(self.NAV_ITEMS[10:], start=10):
+        # View 10: Enterprise Storage Management & Failover Controller (Phase 13 - F-047)
+        self.storage_widget = StorageManagementWidget()
+        self.stack.addWidget(self.storage_widget)
+
+        # Views 11 to 14: Module Placeholders
+        for idx, (title, desc) in enumerate(self.NAV_ITEMS[11:], start=11):
             phase_num = f"Phase {idx}" if idx < 15 else "Phase 15+"
             placeholder = ModulePlaceholderWidget(
                 module_title=f"{title.upper()}",

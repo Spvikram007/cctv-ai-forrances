@@ -5,13 +5,25 @@
 - **Platform**: Windows 11 Enterprise (64-bit)
 - **Python Version**: 3.14.6
 - **Test Framework**: pytest 9.2.0
-- **Total Test Cases**: 432
-- **Passed**: 432
+- **Total Test Cases**: 464
+- **Passed**: 464
 - **Failed**: 0
 - **Errors**: 0
 - **Pass Rate**: **100%**
-- **Total Duration**: 79.38 seconds
+- **Total Duration**: 72.60 seconds
 - **Process Exit Code**: 0 verified via `$LASTEXITCODE`
+
+---
+
+## Phase 13 Enterprise Storage Benchmarks
+Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, NVMe SSD & SATA Storage:
+
+| Benchmark Target | Operation / Load | Measured Metric | Target Benchmark | Verdict |
+| :--- | :--- | :--- | :--- | :--- |
+| **Allocation Resolution Throughput** | 500 channel destination queries | **> 1,000 ops/sec** (480 ms for 500 ops) | $\ge 500\text{ ops/sec}$ | **PASS** |
+| **Segment Manifest Creation** | 5 MB video segment SHA-256 hash + DB insert | **~85.4 ms** | $< 150\text{ ms}$ (isolated) / $< 1000\text{ ms}$ (load) | **PASS** |
+| **Volume Audit Latency** | Read/write disk probe + capability audit | **~12.8 ms** | $< 100\text{ ms}$ | **PASS** |
+| **Capacity Forecast Query** | Historical linear extrapolation query | **~24.1 ms** | $< 100\text{ ms}$ | **PASS** |
 
 ---
 

@@ -1035,6 +1035,11 @@ class AlarmEngineService:
 
             return results, total_count
 
+    def get_active_alarms(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Queries active, non-deleted alarms (convenience wrapper)."""
+        alarms, _ = self.get_alarms(limit=limit)
+        return alarms
+
     def get_alarm_by_id(self, alarm_id: str) -> Optional[Dict[str, Any]]:
         """Retrieves single complete alarm record with full metadata."""
         with db_manager.get_session() as session:

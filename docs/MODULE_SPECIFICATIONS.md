@@ -133,3 +133,21 @@
 - **Role**: Neural network model registry, verification, confidence tuning, and device scheduling.
 - **Components**: `ModelManager`, `ModelSpec`, `AIModel`, `AIModelVersion`, `AIJob`.
 - **Capabilities**: Local filesystem model cataloging, SHA-256 cryptographic weight verification, target device binding (AUTO, GPU, CPU), input tensor shape verification, and offline model execution without external cloud connectivity.
+
+## Module 18: Enterprise Storage Management & Automated Failover (`engines/storage_engine`, `modules/storage_management`)
+- **Status**: COMPLETE (Phase 13 - F-047)
+- **Role**: Multi-tier storage pools, hardware RAID monitoring, physical NAS integration, dynamic camera allocations, automated failover and transition gap logging, authoritative cryptographic recording manifests, and multi-tier archival lifecycle.
+- **Components**:
+  - `EnterpriseStorageService` (`engines/storage_engine/storage_service.py`): Central facade coordinating all storage adapters, monitors, allocation, failover, and archival managers.
+  - `LocalStorageAdapter` (`engines/storage_engine/adapters/local.py`): Win32 API volume discovery, NTFS/ReFS capability detection, read/write latency probes, and strict path traversal protection.
+  - `RAIDMonitoringAdapter` (`engines/storage_engine/adapters/raid.py`): Hardware RAID 0/1/5/6/10 and Windows Storage Spaces monitoring, degraded state detection, and administrative rebuild gate.
+  - `NASStorageAdapter` (`engines/storage_engine/adapters/nas.py`): SMB/CIFS and NFS profile manager with Windows DPAPI credential encryption, network latency/throughput probes, disconnect simulation, and exponential backoff reconnection.
+  - `StoragePolicyEngine` (`engines/storage_engine/policy_engine.py`): Warning (85.0%) and critical (95.0%) capacity threshold evaluation, minimum free reserve enforcement (`min_free_gb >= 10.0`), and status eligibility checks.
+  - `StorageAllocationManager` (`engines/storage_engine/allocation_manager.py`): Multi-tier storage pools (`HOT`, `WARM`, `COLD`), camera channel allocations, and destination resolution (> 1000 ops/sec).
+  - `VolumeMonitor` (`engines/storage_engine/volume_monitor.py`): Periodic volume health audits, threshold event publishing, and linear capacity exhaustion forecasting.
+  - `StorageFailoverManager` (`engines/storage_engine/failover_manager.py`): Write failure detection, seamless failover redirection, transition gap calculation and logging, and controlled failback.
+  - `StorageIntegrityManager` (`engines/storage_engine/integrity_manager.py`): Authoritative `StorageRecordingManifest` creation with SHA-256 verification and chronological recording gap detection.
+  - `StorageArchivalManager` (`engines/storage_engine/archival_manager.py`): Multi-tier migration (`HOT` $\to$ `WARM` $\to$ `COLD`), hash-verified transfers, source deletion gating, permanent evidentiary lock preservation (`is_locked=True`), and archive restitution.
+  - `StorageScheduler` (`engines/storage_engine/scheduler.py`): Background maintenance daemon running health audits and retention pruning.
+  - `StorageManagementWidget` (`modules/storage_management/storage_workspace_widget.py`): 8-tab PySide6 Command Center workspace mounted at View 10 with real-time telemetry and management controls.
+  - `Storage Models` (`database/models/storage.py`): 10 relational tables (`storage_pools`, `storage_devices`, `storage_policies`, `storage_allocations`, `storage_health_history`, `storage_failover_events`, `storage_recording_manifests`, `storage_archival_jobs`, `storage_archival_copies`, `nas_connections`) and extended `storage_volumes`.

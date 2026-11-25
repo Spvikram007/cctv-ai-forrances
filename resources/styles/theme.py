@@ -202,3 +202,94 @@ QStatusBar {
     padding: 4px 12px;
 }
 """
+
+
+class SurveillanceTheme:
+    """Design system constants and helpers for surveillance workspace widgets."""
+    TEXT_PRIMARY = "#e6edf3"
+    TEXT_SECONDARY = "#8b949e"
+    TEXT_MUTED = "#6e7681"
+    ACCENT_PRIMARY = "#1f6feb"
+    ACCENT_SUCCESS = "#2ea043"
+    ACCENT_WARNING = "#d29922"
+    ACCENT_DANGER = "#f85149"
+    BG_SURFACE = "#161b22"
+    BG_CONTAINER = "#0d1117"
+    BORDER = "#30363d"
+
+    @staticmethod
+    def get_action_button_style(variant: str = "primary") -> str:
+        colors = {
+            "primary": ("#1f6feb", "#388bfd", "#ffffff"),
+            "secondary": ("#21262d", "#30363d", "#c9d1d9"),
+            "warning": ("#d29922", "#e3b341", "#ffffff"),
+            "danger": ("#da3633", "#f85149", "#ffffff"),
+            "success": ("#238636", "#2ea043", "#ffffff"),
+        }
+        bg, hover, text = colors.get(variant, colors["secondary"])
+        return f"""
+            QPushButton {{
+                background-color: {bg};
+                color: {text};
+                border: 1px solid #30363d;
+                border-radius: 4px;
+                padding: 6px 14px;
+                font-weight: 600;
+            }}
+            QPushButton:hover {{
+                background-color: {hover};
+            }}
+        """
+
+    @staticmethod
+    def get_tab_widget_style() -> str:
+        return """
+            QTabWidget::pane {
+                border: 1px solid #30363d;
+                background-color: #0d1117;
+            }
+            QTabBar::tab {
+                background-color: #161b22;
+                color: #8b949e;
+                border: 1px solid #30363d;
+                border-bottom: none;
+                padding: 8px 16px;
+                font-weight: 600;
+            }
+            QTabBar::tab:selected {
+                background-color: #0d1117;
+                color: #58a6ff;
+                border-bottom: 2px solid #58a6ff;
+            }
+        """
+
+    @staticmethod
+    def get_kpi_card_style() -> str:
+        return """
+            QFrame {
+                background-color: #161b22;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                padding: 10px;
+            }
+        """
+
+    @staticmethod
+    def get_table_style() -> str:
+        return """
+            QTableWidget {
+                background-color: #161b22;
+                alternate-background-color: #0d1117;
+                border: 1px solid #30363d;
+                gridline-color: #21262d;
+                color: #c9d1d9;
+            }
+            QHeaderView::section {
+                background-color: #21262d;
+                color: #8b949e;
+                border: none;
+                border-bottom: 1px solid #30363d;
+                padding: 6px 10px;
+                font-weight: 600;
+            }
+        """

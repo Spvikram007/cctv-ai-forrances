@@ -42,6 +42,10 @@ class AlarmEventBusAdapter:
             "storage.write_failure": self._on_storage_write_failure,
             "storage.volume_critical": self._on_storage_critical,
             "storage.volume_low": self._on_storage_low,
+            "storage.failover_active": self._on_storage_failover,
+            "storage.recording_gap": self._on_storage_gap,
+            "storage.archival_failure": self._on_storage_archival_failure,
+            "storage.integrity_failure": self._on_storage_integrity_failure,
             "forensic.integrity_failure": self._on_forensic_failure,
         }
 
@@ -126,6 +130,22 @@ class AlarmEventBusAdapter:
     def _on_storage_write_failure(self, event: Event) -> None:
         data = event.data if isinstance(event.data, dict) else {"payload": event.data}
         alarm_service.enqueue_event("STORAGE", "WRITE_FAILURE", data)
+
+    def _on_storage_failover(self, event: Event) -> None:
+        data = event.data if isinstance(event.data, dict) else {"payload": event.data}
+        alarm_service.enqueue_event("STORAGE", "FAILOVER_ACTIVE", data)
+
+    def _on_storage_gap(self, event: Event) -> None:
+        data = event.data if isinstance(event.data, dict) else {"payload": event.data}
+        alarm_service.enqueue_event("STORAGE", "RECORDING_GAP", data)
+
+    def _on_storage_archival_failure(self, event: Event) -> None:
+        data = event.data if isinstance(event.data, dict) else {"payload": event.data}
+        alarm_service.enqueue_event("STORAGE", "ARCHIVAL_FAILURE", data)
+
+    def _on_storage_integrity_failure(self, event: Event) -> None:
+        data = event.data if isinstance(event.data, dict) else {"payload": event.data}
+        alarm_service.enqueue_event("STORAGE", "INTEGRITY_FAILURE", data)
 
     def _on_forensic_failure(self, event: Event) -> None:
         data = event.data if isinstance(event.data, dict) else {"payload": event.data}

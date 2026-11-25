@@ -79,6 +79,11 @@ def ensure_test_models_exist():
 def pytest_sessionfinish(session, exitstatus):
     """Ensures clean shutdown of any Qt or background thread resources."""
     try:
+        from engines.storage_engine.storage_service import enterprise_storage_service
+        enterprise_storage_service.stop_scheduler()
+    except Exception:
+        pass
+    try:
         from engines.alarm_engine.alarm_service import alarm_service
         alarm_service.stop()
     except Exception:

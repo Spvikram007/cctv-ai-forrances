@@ -258,7 +258,44 @@ class EventNormalizer:
 
         # 5. Storage & Recording Engine Events
         elif subsystem_upper == "STORAGE":
-            if "WRITE" in event_type.upper() or "IO" in event_type.upper():
+            if "FAILOVER" in event_type.upper():
+                title = f"Storage Failover Active: Camera {camera_id or 'System'}"
+                description = f"Recording failover activated for camera {camera_id}: redirected to volume {sanitized_data.get('failover_volume_name', 'Alternate')}."
+                severity = AlarmSeverity.HIGH
+                priority = AlarmPriority.P2_HIGH
+                category = AlarmCategory.OPERATIONAL
+            elif "GAP" in event_type.upper():
+                gap_sec = sanitized_data.get("gap_seconds", 0.0)
+                title = f"Recording Gap Detected: Camera {camera_id or 'System'} ({gap_sec:.1f}s)"
+                description = f"Recording timeline discontinuity detected for camera {camera_id}: {gap_sec:.2f} seconds gap."
+                severity = AlarmSeverity.MEDIUM
+                priority = AlarmPriority.P3_NORMAL
+                category = AlarmCategory.OPERATIONAL
+            elif "ARCHIVAL" in event_type.upper():
+                title = "Storage Archival Migration Failure"
+                description = f"Archival tier transfer failed: {sanitized_data.get('error', 'Transfer error')}."
+                severity = AlarmSeverity.MEDIUM
+                priority = AlarmPriority.P3_NORMAL
+                category = AlarmCategory.OPERATIONAL
+            elif "INTEGRITY" in event_type.upper():
+                title = f"Storage File Integrity Failure: Camera {camera_id or 'File'}"
+                description = f"Cryptographic checksum mismatch or file missing: {sanitized_data.get('file_path', 'File')}."
+                severity = AlarmSeverity.CRITICAL
+                priority = AlarmPriority.P1_URGENT
+                category = AlarmCategory.FORENSIC
+            elif "RAID" in event_type.upper():
+                title = f"RAID Array Health Alert: {sanitized_data.get('array_name', 'Array')}"
+                description = f"RAID array degraded or rebuild failed: {sanitized_data.get('details', 'Degraded disk detected')}."
+                severity = AlarmSeverity.HIGH
+                priority = AlarmPriority.P2_HIGH
+                category = AlarmCategory.HARDWARE
+            elif "NAS" in event_type.upper():
+                title = f"NAS Storage Disconnected: {sanitized_data.get('share_name', 'Network Share')}"
+                description = f"NAS storage share unreachable: {sanitized_data.get('error', 'Network connection timeout')}."
+                severity = AlarmSeverity.HIGH
+                priority = AlarmPriority.P2_HIGH
+                category = AlarmCategory.HARDWARE
+            elif "WRITE" in event_type.upper() or "IO" in event_type.upper():
                 title = f"Storage Write Failure: {sanitized_data.get('volume_path', 'Drive')}"
                 description = f"Storage I/O write failure on volume {sanitized_data.get('volume_path', 'Drive')}: {sanitized_data.get('error', 'Disk write error')}."
                 severity = AlarmSeverity.CRITICAL

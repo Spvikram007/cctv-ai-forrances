@@ -703,6 +703,70 @@ TEST RESULTS: 362 passed, 0 failed, 100% pass rate.
 KNOWN ISSUES: None.  
 GIT COMMIT: 192a7ca  
 
+## [1.3.0-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-012  
+FEATURE ID: F-047  
+DATE: 2026-11-25  
+VERSION: 1.3.0-alpha  
+CHANGE TYPE: NEW FEATURE & ENTERPRISE ARCHITECTURE EXPANSION  
+DESCRIPTION: Implemented Phase 13 Enterprise Storage Management, RAID Monitoring, NAS Integration, and Automated Failover. Developed hardware-independent storage adapters for local drives (NTFS/ReFS capability detection, Win32 volume discovery, read/write probes, strict path traversal safety), RAID arrays (0/1/5/6/10, Windows Storage Spaces, degraded detection, administrative authorization rebuild gate), and NAS storage (SMB/NFS, Windows DPAPI credential protection, network latency/throughput probes, disconnect detection and backoff recovery). Built multi-tier storage pools (Hot, Warm, Cold), channel-to-volume allocations with > 1000/s resolution throughput, safety reserve enforcement (`min_free_gb >= 10.0`), write failure detection with dynamic failover redirection, explicit transition gap calculation and logging (`StorageFailoverEvent`), and controlled failback requiring volume health validation. Added authoritative segment sealing generating immutable cryptographic manifests (`StorageRecordingManifest`) with SHA-256 chunked digests, multi-tier archival migration with source hash verification before deletion, permanent evidentiary lock protection (`is_locked=True` source files never deleted), background maintenance scheduler (`StorageScheduler`), and full EventBus integration with Phase 12 Alarm Engine (`storage.write_failure`, `storage.volume_critical`, `storage.failover_active`, `storage.recording_gap`). Developed 8-tab PySide6 desktop Command Center workspace (`StorageManagementWidget`) mounted at View 10. Authored design document `docs/PHASE_13_STORAGE_MANAGEMENT_DESIGN.md`, implementation report `docs/PHASE_13_IMPLEMENTATION_REPORT.md`, and physical validation checklist `docs/PHASE_13_PHYSICAL_VALIDATION_CHECKLIST.md`.  
+FILES CREATED:  
+- `docs/PHASE_13_STORAGE_MANAGEMENT_DESIGN.md`  
+- `docs/PHASE_13_IMPLEMENTATION_REPORT.md`  
+- `docs/PHASE_13_PHYSICAL_VALIDATION_CHECKLIST.md`  
+- `engines/storage_engine/enums.py`  
+- `engines/storage_engine/adapters/base.py`  
+- `engines/storage_engine/adapters/local.py`  
+- `engines/storage_engine/adapters/raid.py`  
+- `engines/storage_engine/adapters/nas.py`  
+- `engines/storage_engine/adapters/__init__.py`  
+- `engines/storage_engine/volume_monitor.py`  
+- `engines/storage_engine/policy_engine.py`  
+- `engines/storage_engine/allocation_manager.py`  
+- `engines/storage_engine/failover_manager.py`  
+- `engines/storage_engine/integrity_manager.py`  
+- `engines/storage_engine/archival_manager.py`  
+- `engines/storage_engine/scheduler.py`  
+- `engines/storage_engine/storage_service.py`  
+- `engines/storage_engine/__init__.py`  
+- `database/models/storage.py`  
+- `modules/storage_management/storage_workspace_widget.py`  
+- `modules/storage_management/__init__.py`  
+- `tests/unit/test_storage_adapters.py`  
+- `tests/unit/test_storage_policy_and_allocation.py`  
+- `tests/unit/test_storage_failover_and_integrity.py`  
+- `tests/unit/test_storage_archival_and_retention.py`  
+- `tests/integration/test_storage_integration.py`  
+- `tests/performance/test_storage_performance.py`  
+FILES MODIFIED:  
+- `VERSION`  
+- `core/config/settings.py`  
+- `database/models/recordings.py`  
+- `database/models/__init__.py`  
+- `database/database_manager.py`  
+- `engines/alarm_engine/adapters.py`  
+- `engines/alarm_engine/normalizer.py`  
+- `engines/alarm_engine/alarm_service.py`  
+- `engines/recording_engine/recorder.py`  
+- `resources/styles/theme.py`  
+- `app/main.py`  
+- `app/bootstrap.py`  
+- `tests/conftest.py`  
+- `docs/FEATURE_REGISTER.md`  
+- `docs/DEVELOPMENT_STATUS.md`  
+- `docs/CHANGELOG.md`  
+- `docs/TEST_REPORTS.md`  
+- `docs/ARCHITECTURE.md`  
+- `docs/MODULE_SPECIFICATIONS.md`  
+FILES DELETED: None  
+DATABASE CHANGES: Extended `storage_volumes` with `pool_id`, `volume_type`, `filesystem`, `volume_status`, `is_failover_target`, `reserved_bytes`, and `health_score`. Created 10 new relational models: `storage_pools`, `storage_devices`, `storage_policies`, `storage_allocations`, `storage_health_history`, `storage_failover_events`, `storage_recording_manifests`, `storage_archival_jobs`, `storage_archival_copies`, and `nas_connections`. Added automatic column migration in `DatabaseManager.init_schema()`.  
+DEPENDENCIES CHANGED: None.  
+TESTS PERFORMED: Full regression suite across all 464 test cases (289 unit tests, 94 integration tests, 90 performance benchmarks). 100% pass rate in 72.60 seconds. Process exit code 0 verified via `$LASTEXITCODE`.  
+TEST RESULTS: 464 passed, 0 failed, 100% pass rate.  
+KNOWN ISSUES: Software implementation 100% automated test passing; physical RAID rebuild and 10GbE NAS cable pull require field deployment checklist sign-off.  
+GIT COMMIT: Pending commit for CHG-20261125-012  
+
 ## [1.2.2-alpha] - 2026-11-25
 
 CHANGE ID: CHG-20261125-011  

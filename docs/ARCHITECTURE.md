@@ -242,3 +242,22 @@ The database architecture employs an abstract repository model via SQLAlchemy 2.
   - Features 5 operational tabs: *Incident Monitor* (multi-filter alarm feeds, color-coded severity badges, search), *Detail & Evidence* (raw JSON payload inspector, evidence references, chronological audit history), *Policy Administration* (SLA timeouts, deduplication windows), *SLA & Shift Metrics* (MTTA, MTTR, top-camera alarm counts), and *Live Event Simulator* (operator testing).
   - *Synchronized Playback Seek*: Emits `request_playback_seek(camera_id, timestamp_iso)` to automatically switch `MainWindow` to View 2 (Playback) and jump directly to the incident timestamp.
   - *Headless Safety*: Automatically suppresses modal blocking dialogs in offscreen testing mode (`QT_QPA_PLATFORM=offscreen`).
+
+### 3.19 Enterprise Storage Management & Automated Failover Subsystem (Phase 13 - F-047)
+- **Hardware-Independent Storage Adapters (`engines/storage_engine/adapters/`)**:
+  - *Local Storage Adapter (`local.py`)*: Windows Win32 API volume discovery (`GetLogicalDrives`, `GetVolumeInformationW`). NTFS and ReFS capability detection. Non-blocking read/write disk probes measuring latency. Strict path traversal protection (`is_path_safe_traversal_check`) enforcing path normalization, boundary isolation, and null-byte rejection.
+  - *RAID Monitoring Adapter (`raid.py`)*: Hardware-independent adapter supporting RAID 0, 1, 5, 6, and 10, integrated with Windows Storage Spaces and WMI. Detects degraded arrays, missing disks, and tracks rebuild progress. Enforces an administrative authorization gate (`authorize_rebuild()`) before executing rebuild operations.
+  - *NAS Storage Adapter (`nas.py`)*: SMB/CIFS and NFS share profile management with Windows DPAPI credential encryption via `CryptProtectData`. Ping reachability, throughput, and latency probing. Disconnect simulation and connection health tracking with exponential backoff.
+- **Storage Pools, Policies and Dynamic Allocations (`engines/storage_engine/`)**:
+  - *Storage Policy Engine (`policy_engine.py`)*: Warning (85.0%) and critical (95.0%) capacity threshold evaluation. Minimum free space enforcement (`min_free_gb >= 10.0`). Status-aware eligibility checks rejecting `OFFLINE`, `READ_ONLY`, `FULL`, and `DEGRADED` volumes.
+  - *Storage Allocation Manager (`allocation_manager.py`)*: Multi-tier storage pools (Hot, Warm, Cold). Camera channel to volume allocation with high-throughput destination resolution (>1000/s). Dynamic failover redirection check ensuring seamless routing during drive degradation.
+  - *Volume Monitor & Extrapolation Forecasting (`volume_monitor.py`)*: Background volume health monitoring and linear capacity forecasting estimating days until volume exhaustion based on active recording bitrates.
+- **Failover, Segment Manifests and Multi-Tier Archival**:
+  - *Storage Failover Manager (`failover_manager.py`)*: Intercepts recording write failures, redirects streams to eligible failover targets, records transition gaps in `StorageFailoverEvent`, and coordinates controlled failback with primary volume health validation.
+  - *Storage Integrity Manager (`integrity_manager.py`)*: Generates authoritative `StorageRecordingManifest` with SHA-256 cryptographic verification for every completed recording segment. Chronological gap detection across recording segments.
+  - *Multi-Tier Archival Manager (`archival_manager.py`)*: Multi-tier migration (`HOT` $\to$ `WARM` $\to$ `COLD`). SHA-256 verification of copied files before source deletion. Strict evidentiary lock guarantee: files marked `is_locked=True` are never deleted during archival or retention pruning.
+  - *Storage Scheduler (`scheduler.py`)*: Background daemon executing scheduled health checks and retention pruning.
+  - *Alarm Engine Integration*: Publishes canonical storage alerts on EventBus (`storage.write_failure`, `storage.volume_critical`, `storage.volume_low`, `storage.failover_active`, `storage.recording_gap`, `storage.archival_failure`, `storage.integrity_failure`).
+- **Command Center Workspace (`modules/storage_management/storage_workspace_widget.py`)**:
+  - PySide6 desktop command center mounted at View 10 (`StorageManagementWidget`).
+  - Features 8 operational surveillance tabs: Overview & Pools, Local Volumes, Disks & SMART, RAID Arrays, Camera Allocations, NAS Connections, Failover & Integrity, Archival & Retention. Responsive dark surveillance theme using `SurveillanceTheme`.

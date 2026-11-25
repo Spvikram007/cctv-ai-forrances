@@ -124,6 +124,12 @@ def bootstrap_application() -> Dict[str, Any]:
     alarm_adapter.start()
     logger.info("Unified Alarm Engine: EventBus adapters active and listening.")
 
+    # 10. Enterprise Storage Management Initialization (Phase 13 - F-047)
+    from engines.storage_engine.storage_service import enterprise_storage_service
+    enterprise_storage_service.initialize()
+    enterprise_storage_service.start_scheduler()
+    logger.info("Enterprise Storage Engine: Storage adapters and background scheduler active.")
+
     return {
         "status": "READY",
         "app_name": settings.app_name,
@@ -136,6 +142,7 @@ def bootstrap_application() -> Dict[str, Any]:
         "anpr_ready": True,
         "face_intelligence_ready": True,
         "alarm_engine_ready": True,
+        "storage_engine_ready": True,
         "db_health": db_health,
         "recovered_recordings": recovered_count,
     }

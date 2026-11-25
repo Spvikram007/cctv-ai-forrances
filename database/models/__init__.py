@@ -55,6 +55,18 @@ from database.models.alarms import (
     AlarmAssignment,
     AlarmNotification,
 )
+from database.models.storage import (
+    StoragePool,
+    StorageDevice,
+    StoragePolicy,
+    StorageAllocation,
+    StorageHealthHistory,
+    StorageFailoverEvent,
+    StorageRecordingManifest,
+    StorageArchivalJob,
+    StorageArchivalCopy,
+    NASConnection,
+)
 
 __all__ = [
     "Base",
@@ -110,4 +122,14 @@ __all__ = [
     "AlarmPolicy",
     "AlarmAssignment",
     "AlarmNotification",
+    "StoragePool",
+    "StorageDevice",
+    "StoragePolicy",
+    "StorageAllocation",
+    "StorageHealthHistory",
+    "StorageFailoverEvent",
+    "StorageRecordingManifest",
+    "StorageArchivalJob",
+    "StorageArchivalCopy",
+    "NASConnection",
 ]

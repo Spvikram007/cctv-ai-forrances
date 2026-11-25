@@ -21,6 +21,16 @@ class StorageVolume(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_default = Column(Boolean, default=False, nullable=False)
 
+    # Phase 13 Enterprise Storage extensions
+    pool_id = Column(String(36), ForeignKey("storage_pools.id", ondelete="SET NULL"), nullable=True, index=True)
+    volume_type = Column(String(20), default="LOCAL", nullable=False)  # LOCAL, RAID, NAS_SMB, NAS_NFS
+    filesystem = Column(String(20), default="NTFS", nullable=False)    # NTFS, ReFS, SMB, NFS, etc.
+    volume_status = Column(String(20), default="ONLINE", nullable=False)  # ONLINE, DEGRADED, OFFLINE, READ_ONLY, FULL
+    is_failover_target = Column(Boolean, default=False, nullable=False)
+    reserved_bytes = Column(BigInteger, default=0, nullable=False)
+    health_score = Column(Float, default=100.0, nullable=False)
+
+    pool = relationship("StoragePool", back_populates="volumes")
     recordings = relationship("Recording", back_populates="volume")
     events = relationship("StorageEvent", back_populates="volume", cascade="all, delete-orphan")
 

@@ -126,6 +126,27 @@ class DatabaseManager:
                         if "payload" not in notif_cols:
                             conn.execute(text("ALTER TABLE alarm_notifications ADD COLUMN payload TEXT"))
                     cursor.close()
+
+                    # Upgrade storage_volumes table for Phase 13 Enterprise Storage
+                    cursor = conn.connection.cursor()
+                    cursor.execute("PRAGMA table_info(storage_volumes)")
+                    vol_cols = {row[1] for row in cursor.fetchall()}
+                    if vol_cols:
+                        if "pool_id" not in vol_cols:
+                            conn.execute(text("ALTER TABLE storage_volumes ADD COLUMN pool_id VARCHAR(36)"))
+                        if "volume_type" not in vol_cols:
+                            conn.execute(text("ALTER TABLE storage_volumes ADD COLUMN volume_type VARCHAR(20) DEFAULT 'LOCAL'"))
+                        if "filesystem" not in vol_cols:
+                            conn.execute(text("ALTER TABLE storage_volumes ADD COLUMN filesystem VARCHAR(20) DEFAULT 'NTFS'"))
+                        if "volume_status" not in vol_cols:
+                            conn.execute(text("ALTER TABLE storage_volumes ADD COLUMN volume_status VARCHAR(20) DEFAULT 'ONLINE'"))
+                        if "is_failover_target" not in vol_cols:
+                            conn.execute(text("ALTER TABLE storage_volumes ADD COLUMN is_failover_target BOOLEAN DEFAULT 0"))
+                        if "reserved_bytes" not in vol_cols:
+                            conn.execute(text("ALTER TABLE storage_volumes ADD COLUMN reserved_bytes BIGINT DEFAULT 0"))
+                        if "health_score" not in vol_cols:
+                            conn.execute(text("ALTER TABLE storage_volumes ADD COLUMN health_score FLOAT DEFAULT 100.0"))
+                    cursor.close()
         except Exception as e:
             logger.debug("Schema migration notice: %s", e)
 
