@@ -137,11 +137,15 @@ class VideoAuthenticityAnalyzer:
         self.timestamp_gap_factor = timestamp_gap_factor
 
     @staticmethod
-    def compute_file_sha256(file_path: str, chunk_size: int = 65536) -> str:
-        """Computes SHA-256 digest of a file in buffered chunks."""
+    def compute_file_sha256(file_path: str, chunk_size: int = 1048576) -> str:
+        """Computes SHA-256 digest of a file in buffered chunks or using optimized file_digest."""
         p = Path(file_path)
         if not p.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
+
+        if hasattr(hashlib, "file_digest"):
+            with open(p, "rb") as f:
+                return hashlib.file_digest(f, "sha256").hexdigest()
 
         hasher = hashlib.sha256()
         with open(p, "rb") as f:

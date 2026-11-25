@@ -119,6 +119,11 @@ def bootstrap_application() -> Dict[str, Any]:
     loaded_faces = face_intelligence_service.reload_enrolled_templates()
     logger.info("Face Intelligence: %d authorized identities active; ANPR pipeline ready.", loaded_faces)
 
+    # 9. Unified Alarm Management Engine Initialization (Phase 12 - F-046)
+    from engines.alarm_engine.adapters import alarm_adapter
+    alarm_adapter.start()
+    logger.info("Unified Alarm Engine: EventBus adapters active and listening.")
+
     return {
         "status": "READY",
         "app_name": settings.app_name,
@@ -130,6 +135,7 @@ def bootstrap_application() -> Dict[str, Any]:
         "analytics_ready": True,
         "anpr_ready": True,
         "face_intelligence_ready": True,
+        "alarm_engine_ready": True,
         "db_health": db_health,
         "recovered_recordings": recovered_count,
     }

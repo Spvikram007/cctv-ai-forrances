@@ -594,3 +594,62 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - **Process Exit Code**: strictly 0 (verified via `$LASTEXITCODE`)
 - **Total Duration**: 49.07 seconds
 - **Hardware Platform**: Intel Core i5-12400, Intel UHD Graphics 730, 16 GB RAM, Windows 11
+
+---
+
+### 74. Alarm Database Models Suite (`tests/unit/test_alarm_models.py`)
+- `test_alarm_model_crud`: **PASSED** (0.04s) — Validates CRUD operations, foreign key constraints, default timestamps, and enum representations for `Alarm`.
+- `test_alarm_event_provenance_link`: **PASSED** (0.02s) — Tests foreign key association between parent `Alarm` and child `AlarmEvent` records.
+- `test_alarm_history_audit_trail`: **PASSED** (0.03s) — Verifies chronological append-only audit trail logging in `AlarmHistory`.
+
+### 75. Event Normalizer Suite (`tests/unit/test_alarm_normalizer.py`)
+- `test_normalize_analytics_intrusion`: **PASSED** (0.00s) — Verifies canonical normalization of perimeter intrusion events with bounding box evidence references.
+- `test_normalize_behaviour_fall`: **PASSED** (0.00s) — Validates human fall detection normalization to SAFETY category with CRITICAL severity and P1_URGENT priority.
+- `test_normalize_anpr_watchlist`: **PASSED** (0.00s) — Tests ANPR watchlist hit normalization with plate text extraction and deduplication key generation.
+- `test_normalize_stream_disconnected`: **PASSED** (0.00s) — Tests camera stream disconnection normalization to OPERATIONAL category with HIGH severity.
+- `test_normalize_network_gateway_outage`: **PASSED** (0.00s) — Tests network gateway failure normalization to CRITICAL severity with root cause target extraction.
+- `test_normalize_forensic_integrity_failure`: **PASSED** (0.00s) — Tests forensic tamper failure normalization with package evidence reference and CRITICAL severity.
+
+### 76. Alarm Policy & Deduplication Suite (`tests/unit/test_alarm_policy_and_dedup.py`)
+- `test_alarm_policy_engine_lookups`: **PASSED** (0.00s) — Tests default policy matching, category mapping, severity defaults, and per-camera policy overrides.
+- `test_alarm_deduplicator_sliding_window`: **PASSED** (0.01s) — Validates thread-safe sliding-window duplicate suppression, occurrence counting, and window expiration.
+
+### 77. Correlation & SLA Escalation Suite (`tests/unit/test_alarm_correlator_and_escalator.py`)
+- `test_alarm_correlator_network_and_recovery`: **PASSED** (0.01s) — Verifies root-cause network correlation linking downstream camera disconnects and auto-clearing upon stream recovery.
+- `test_alarm_escalation_manager_deadline_and_advancement`: **PASSED** (0.04s) — Validates SLA deadline calculation, database persistence, and tier advancement (Tier 0 to Tier 3) upon SLA breach.
+
+### 78. RBAC & Lifecycle State Machine Suite (`tests/unit/test_alarm_rbac_and_lifecycle.py`)
+- `test_rbac_viewer_restricted`: **PASSED** (0.03s) — Proves VIEWER role is strictly blocked from acknowledging, resolving, or modifying alarm states (PermissionError).
+- `test_rbac_operator_permissions_and_limits`: **PASSED** (0.05s) — Tests OPERATOR role permissions to acknowledge, investigate, and resolve incidents, and verifies permission denial when attempting to close cases.
+- `test_supervisor_close_and_reopen`: **PASSED** (0.05s) — Validates SUPERVISOR role authority to permanently close and reopen cases with audit comments.
+- `test_investigator_evidence_and_notes`: **PASSED** (0.04s) — Verifies INVESTIGATOR role adding timestamped investigative notes to `AlarmHistory`.
+- `test_admin_full_override`: **PASSED** (0.04s) — Tests ADMIN role executing manual overrides and emergency escalations.
+
+### 79. Alarm End-to-End Integration Suite (`tests/integration/test_alarm_end_to_end.py`)
+- `test_e2e_analytics_event_to_alarm_lifecycle`: **PASSED** (0.35s) — End-to-end trace from live EventBus `analytics.event` publishing through adapter, ingestion queue, DB creation, notification, operator acknowledgment, and resolution.
+- `test_e2e_stream_disconnect_and_deduplication_burst`: **PASSED** (0.42s) — Tests burst of 20 rapid disconnect events consolidating into a single active alarm with occurrence_count = 20.
+- `test_e2e_concurrent_multi_threaded_ingestion`: **PASSED** (0.85s) — 8 concurrent threads publishing 80 events simultaneously; verifies thread-safe ingestion without database deadlocks.
+- `test_e2e_forensic_integrity_failure_critical_alarm`: **PASSED** (0.15s) — Tests forensic tamper failure event on EventBus creating CRITICAL/P1_URGENT incident.
+
+### 80. Alarm Command Center UI Integration Suite (`tests/integration/test_alarm_ui.py`)
+- `test_alarm_management_widget_lifecycle`: **PASSED** (0.28s) — Verifies AlarmManagementWidget tab switching, metric card counts, incident table filtering, row selection, note entry, and `request_playback_seek` signal emission to View 2.
+
+### 81. Alarm Performance & Scale Benchmarks Suite (`tests/performance/test_alarm_performance.py`)
+- `test_benchmark_alarm_ingestion_throughput`: **PASSED** (0.02s) — Ingested 100 distinct alarm events in 14.8 ms (6,756 events/sec, < 1,500 ms target).
+- `test_benchmark_deduplication_burst_rate`: **PASSED** (0.00s) — Evaluated 500 duplicate checks in 1.8 ms (277,000 checks/sec, < 50 ms target).
+- `test_benchmark_dashboard_metrics_query_latency`: **PASSED** (0.01s) — Computed executive metrics, MTTA, MTTR, and top-camera aggregations across DB in 8.2 ms (< 100 ms target).
+
+---
+
+## 82. Phase 12 Full Platform Sequential Regression Summary
+- **Execution Date**: 2026-11-25
+- **Platform Version**: 1.2.0-alpha
+- **Change ID**: CHG-20261125-009
+- **Feature ID**: F-046 (Unified Alarm Management Engine)
+- **Total Test Suites**: 81
+- **Total Tests Collected**: 388
+- **Total Passed**: 388 (100% Pass Rate)
+- **Total Failed**: 0
+- **Process Exit Code**: strictly 0 (verified via `$LASTEXITCODE`)
+- **Total Duration**: 52.47 seconds
+- **Hardware Platform**: Intel Core i5-12400, Intel UHD Graphics 730, 16 GB RAM, Windows 11

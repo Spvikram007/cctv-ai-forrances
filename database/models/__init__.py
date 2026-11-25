@@ -47,6 +47,14 @@ from database.models.biometrics import (
     VehicleEvent,
     BiometricAuditLog,
 )
+from database.models.alarms import (
+    Alarm,
+    AlarmEvent,
+    AlarmHistory,
+    AlarmPolicy,
+    AlarmAssignment,
+    AlarmNotification,
+)
 
 __all__ = [
     "Base",
@@ -96,4 +104,10 @@ __all__ = [
     "ANPRPlateRecord",
     "VehicleEvent",
     "BiometricAuditLog",
+    "Alarm",
+    "AlarmEvent",
+    "AlarmHistory",
+    "AlarmPolicy",
+    "AlarmAssignment",
+    "AlarmNotification",
 ]

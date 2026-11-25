@@ -13,6 +13,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
 from core.logging.logger import get_logger
+from core.events.event_bus import bus
 
 logger = get_logger("fault_analyzer")
 
@@ -262,5 +263,20 @@ class AutomatedFaultAnalyzer:
                     remediation_action_id="NONE",
                 )
             )
+        else:
+            # Publish actionable faults to EventBus for Alarm Management
+            for r in reports:
+                if r.fault_type != FaultType.NO_FAULT:
+                    bus.publish(
+                        "network.fault_detected",
+                        {
+                            "fault_type": r.fault_type.value,
+                            "severity": r.severity,
+                            "affected_ips": r.affected_ips,
+                            "root_cause_explanation": r.root_cause_explanation,
+                            "recommended_remediation": r.recommended_remediation,
+                        },
+                        source="fault_analyzer",
+                    )
 
         return reports

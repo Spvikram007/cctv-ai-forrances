@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from database.database_manager import db_manager
 from database.models.recordings import StorageVolume, StorageEvent, Recording, RecordingSegment
 from core.config.settings import settings
+from core.events.event_bus import bus
 from core.logging.logger import get_logger
 
 logger = get_logger("storage_manager")
@@ -128,6 +129,20 @@ class StorageManager:
                 session.add(event)
                 logger.warning("Low disk threshold crossed: Status=%s (%.1f%% used, %.1f GB free)",
                                status, metrics.used_percent, metrics.free_gb)
+
+            # Publish to EventBus for Alarm Management
+            topic = "storage.volume_critical" if status == "CRITICAL" else "storage.volume_low"
+            bus.publish(
+                topic,
+                {
+                    "volume_id": vol.id,
+                    "volume_path": vol.mount_path,
+                    "used_percent": metrics.used_percent,
+                    "free_gb": metrics.free_gb,
+                    "severity": status,
+                },
+                source="storage_manager",
+            )
 
         return status
 

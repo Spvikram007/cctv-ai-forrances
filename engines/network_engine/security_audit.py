@@ -14,6 +14,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone
 
 from core.logging.logger import get_logger
+from core.events.event_bus import bus
 
 logger = get_logger("security_audit")
 
@@ -499,7 +500,7 @@ class NetworkSecurityAuditor:
         else:
             grade = "F"
 
-        return SecurityAuditReport(
+        rep = SecurityAuditReport(
             ip_address=ip_address,
             vendor=vendor,
             model=model,
@@ -509,3 +510,24 @@ class NetworkSecurityAuditor:
             issues=issues,
             cve_findings=cve_findings,
         )
+
+        # Publish security alert if high/critical issues or confirmed CVEs present
+        has_severe = any(i.severity in (AuditSeverity.CRITICAL, AuditSeverity.HIGH) for i in issues)
+        has_cve = any(c.confidence == CVEConfidence.CONFIRMED_VULNERABLE.value for c in cve_findings)
+        if has_severe or has_cve:
+            bus.publish(
+                "network.security_alert",
+                {
+                    "ip_address": ip_address,
+                    "vendor": vendor,
+                    "model": model,
+                    "security_score": final_score,
+                    "grade": grade,
+                    "cve_id": cve_findings[0].cve_id if cve_findings else None,
+                    "vulnerability_title": cve_findings[0].cve_id if cve_findings else (issues[0].title if issues else "Security Defect"),
+                    "details": f"Security score {final_score}/100 (Grade {grade}). {len(issues)} issues, {len(cve_findings)} CVEs.",
+                },
+                source="security_auditor",
+            )
+
+        return rep

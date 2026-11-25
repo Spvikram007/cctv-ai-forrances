@@ -701,4 +701,61 @@ DEPENDENCIES CHANGED: None.
 TESTS PERFORMED: Full sequential regression suite across 362 automated tests (257 unit tests, 60 integration tests, 45 performance benchmarks). 100% pass rate in 49.07s. Process exit code 0 strictly verified via `$LASTEXITCODE`.  
 TEST RESULTS: 362 passed, 0 failed, 100% pass rate.  
 KNOWN ISSUES: None.  
-GIT COMMIT: Pending commit for CHG-20261125-008
+GIT COMMIT: 192a7ca  
+
+## [1.2.0-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-009  
+FEATURE ID: F-046 (and F-020)  
+DATE: 2026-11-25  
+VERSION: 1.2.0-alpha  
+CHANGE TYPE: NEW FEATURE & ARCHITECTURE ENHANCEMENT  
+DESCRIPTION: Implemented Phase 12: Unified Alarm Management Engine. Developed central alarm processing layer aggregating heterogeneous events across all subsystems (AI detection, video analytics, human behaviour analytics, ANPR, face intelligence, stream health, network intelligence, storage management, and digital forensics). Implemented canonical `NormalizedAlarmEvent` normalization contract, thread-safe in-memory sliding-window deduplication with automatic burst consolidation (`occurrence_count`), topological network root cause analysis (gateway/switch fault linking) and camera offline auto-clearing upon recovery. Created 6 SQLAlchemy relational models (`alarms`, `alarm_events`, `alarm_history`, `alarm_policies`, `alarm_assignments`, `alarm_notifications`) expanding schema to 52 tables. Built 6-state lifecycle state machine (`NEW`, `ACKNOWLEDGED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `REOPENED`) and enforced service-layer RBAC permissions across all 5 roles (`ADMIN`, `SUPERVISOR`, `INVESTIGATOR`, `OPERATOR`, `VIEWER`). Built dynamic SLA escalation engine tracking persistent deadlines in database and advancing escalation tiers (Tier 0 to Tier 3) via background watchdog. Designed multi-channel notification dispatcher with configurable cooldown intervals. Delivered PySide6 desktop command center mounted at View 9 (`AlarmManagementWidget`) with 5 operational tabs, 6 KPI cards, synchronized playback seek (linking directly to View 2), CSV export, and live event simulation. Integrated EventBus publishers in StorageManager, EvidenceLocker, FaultAnalyzer, and SecurityAudit. Authored authoritative report `docs/PHASE_12_ALARM_ENGINE_REPORT.md`.  
+FILES CREATED:  
+- `database/models/alarms.py`  
+- `engines/alarm_engine/__init__.py`  
+- `engines/alarm_engine/enums.py`  
+- `engines/alarm_engine/normalizer.py`  
+- `engines/alarm_engine/policy_engine.py`  
+- `engines/alarm_engine/deduplicator.py`  
+- `engines/alarm_engine/correlator.py`  
+- `engines/alarm_engine/escalator.py`  
+- `engines/alarm_engine/notification.py`  
+- `engines/alarm_engine/alarm_service.py`  
+- `engines/alarm_engine/adapters.py`  
+- `modules/alarm_management/alarm_workspace_widget.py`  
+- `tests/unit/test_alarm_models.py`  
+- `tests/unit/test_alarm_normalizer.py`  
+- `tests/unit/test_alarm_policy_and_dedup.py`  
+- `tests/unit/test_alarm_correlator_and_escalator.py`  
+- `tests/unit/test_alarm_rbac_and_lifecycle.py`  
+- `tests/integration/test_alarm_end_to_end.py`  
+- `tests/integration/test_alarm_ui.py`  
+- `tests/performance/test_alarm_performance.py`  
+- `docs/PHASE_12_ALARM_ENGINE_REPORT.md`  
+FILES MODIFIED:  
+- `VERSION`  
+- `app/bootstrap.py`  
+- `app/main.py`  
+- `database/models/__init__.py`  
+- `engines/recording_engine/storage_manager.py`  
+- `engines/forensic_engine/evidence_locker.py`  
+- `engines/forensic_engine/authenticity.py`  
+- `engines/network_engine/fault_analyzer.py`  
+- `engines/network_engine/security_audit.py`  
+- `tests/performance/test_forensics_performance.py`  
+- `tests/performance/test_biometrics_performance.py`  
+- `tests/performance/test_biometrics_scale_benchmarks.py`  
+- `docs/FEATURE_REGISTER.md`  
+- `docs/DEVELOPMENT_STATUS.md`  
+- `docs/TEST_REPORTS.md`  
+- `docs/ARCHITECTURE.md`  
+- `docs/MODULE_SPECIFICATIONS.md`  
+- `docs/CHANGELOG.md`  
+FILES DELETED: None  
+DATABASE CHANGES: Added 6 relational tables: `alarms`, `alarm_events`, `alarm_history`, `alarm_policies`, `alarm_assignments`, `alarm_notifications`. Seeded default system alarm policies.  
+DEPENDENCIES CHANGED: None.  
+TESTS PERFORMED: Full platform regression suite execution across 388 automated test cases (275 unit tests, 65 integration tests, 48 performance benchmarks). 100% pass rate in 52.47s. Process exit code 0 strictly verified via `$LASTEXITCODE`.  
+TEST RESULTS: 388 passed, 0 failed, 100% pass rate.  
+KNOWN ISSUES: None.  
+GIT COMMIT: Pending commit for CHG-20261125-009

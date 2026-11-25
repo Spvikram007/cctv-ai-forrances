@@ -27,6 +27,7 @@ from modules.anpr_intelligence.anpr_workspace_widget import ANPRWorkspaceWidget
 from modules.video_forensics.forensics_workspace_widget import VideoForensicsWidget
 from modules.video_enhancement.enhancement_widget import VideoEnhancementWidget
 from modules.network_intelligence.network_workspace_widget import NetworkIntelligenceWidget
+from modules.alarm_management.alarm_workspace_widget import AlarmManagementWidget
 from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
 from engines.video_engine.stream_manager import stream_manager
 from engines.video_engine.playback_controller import playback_controller
@@ -156,9 +157,14 @@ class MainWindow(QMainWindow):
         self.network_widget = NetworkIntelligenceWidget()
         self.stack.addWidget(self.network_widget)
 
-        # Views 9 to 14: Module Placeholders
-        for idx, (title, desc) in enumerate(self.NAV_ITEMS[9:], start=9):
-            phase_num = f"Phase {idx}" if idx < 12 else "Phase 12+"
+        # View 9: Unified Alarm Management & Incident Command Center (Phase 12 - F-046)
+        self.alarm_widget = AlarmManagementWidget()
+        self.alarm_widget.request_playback_seek.connect(self._on_playback_seek_requested)
+        self.stack.addWidget(self.alarm_widget)
+
+        # Views 10 to 14: Module Placeholders
+        for idx, (title, desc) in enumerate(self.NAV_ITEMS[10:], start=10):
+            phase_num = f"Phase {idx}" if idx < 15 else "Phase 15+"
             placeholder = ModulePlaceholderWidget(
                 module_title=f"{title.upper()}",
                 phase_info=f"{desc} — Scheduled for implementation under {phase_num}.",
@@ -270,6 +276,14 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentIndex(index)
         for i, btn in enumerate(self._nav_buttons):
             btn.setChecked(i == index)
+
+    def _on_playback_seek_requested(self, camera_id: str, timestamp_iso: str) -> None:
+        """Handles alarm request to jump directly to incident footage in Playback Workspace."""
+        self._switch_view(2)  # Switch to Playback (View 2)
+        try:
+            playback_controller.seek_to_timestamp(camera_id, timestamp_iso)
+        except Exception as e:
+            logger.debug("Playback seek from alarm: %s", e)
 
     def _start_timers(self) -> None:
         # Clock timer (every 1 second)

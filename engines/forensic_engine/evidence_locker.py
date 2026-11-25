@@ -20,6 +20,7 @@ from enum import Enum
 
 from core.logging.logger import get_logger
 from core.config.settings import settings
+from core.events.event_bus import bus
 from engines.forensic_engine.authenticity import (
     VideoAuthenticityAnalyzer,
     ForensicAnalysisReport,
@@ -705,6 +706,21 @@ class EvidenceLocker:
         checkpoints_valid, cp_count, cp_errors = self.verify_checkpoints(evidence_id)
 
         overall_valid = sha_valid and sig_valid and chain_valid and checkpoints_valid
+
+        # Publish forensic integrity failure to EventBus if tamper detected
+        if not overall_valid:
+            bus.publish(
+                "forensic.integrity_failure",
+                {
+                    "evidence_id": evidence_id,
+                    "sha256_match": sha_valid,
+                    "signature_valid": sig_valid,
+                    "custody_chain_valid": chain_valid,
+                    "checkpoints_valid": checkpoints_valid,
+                    "details": f"Evidence {evidence_id} verification failed: sha={sha_valid}, sig={sig_valid}, chain={chain_valid}",
+                },
+                source="evidence_locker",
+            )
 
         # Record verification event in custody ledger
         action_name = "VERIFY" if overall_valid else "TAMPER_DETECTED"
