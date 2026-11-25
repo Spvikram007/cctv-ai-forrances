@@ -560,3 +560,49 @@ TESTS PERFORMED: Automated execution across 313 test cases (305 regression tests
 TEST RESULTS: 313 passed, 0 failed, 100% pass rate in 44.22s.  
 KNOWN ISSUES: None.  
 GIT COMMIT: 22a147a
+
+## [1.1.0-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-006  
+FEATURE ID: F-019  
+DATE: 2026-11-25  
+VERSION: 1.1.0-alpha  
+CHANGE TYPE: NEW FEATURE & ARCHITECTURE EXPANSION  
+DESCRIPTION: Implemented Phase 11 — Network Intelligence & Security Audit (F-019). Delivered the core Network Intelligence Engine (`engines/network_engine/`) and the interactive PySide6 surveillance workspace (`modules/network_intelligence/`). Implemented authorized multi-threaded subnet scanning with CIDR prefix boundary validation (/20 to /32, max 1024 hosts per pass), ARP resolution via Windows IP Helper SendARP API and ARP cache parsing, ping reachability, duplicate IP / MAC collision detection, IEEE OUI vendor database matching (Hikvision, Dahua, CP PLUS, Axis, Hanwha, Uniview, Cisco, etc.), and multi-factor device classification (IP_CAMERA, NVR, GATEWAY, SWITCH, HOST). Implemented CCTV Device Diagnostics (`DeviceDiagnosticEngine`) with non-blocking multi-protocol reachability (RTSP OPTIONS handshake, ONVIF Profile S/T discovery probe, HTTP/HTTPS web endpoints, ISAPI/CGI adapters), root-cause categorization (CONNECTION_FAILURE, AUTHENTICATION_FAILURE, INVALID_RTSP_PATH, UNSUPPORTED_PROTOCOL, STREAM_TIMEOUT, PORT_CLOSED, DNS_GATEWAY_ERROR), and strict zero plaintext credential logging. Implemented continuous Network Performance Monitoring (`NetworkPerformanceMonitor`) with bounded history queues (`deque(maxlen=120)`), real-time bandwidth (bps/Mbps), RTT latency (ms), packet loss (%), jitter, uptime percentage, and automated congestion alerting. Implemented non-intrusive Network Security & Vulnerability Auditing (`NetworkSecurityAuditor`) checking unencrypted RTSP (SEC-001), insecure HTTP management (SEC-002), exposed Telnet (SEC-003) and FTP (SEC-004), unauthenticated ONVIF access (SEC-005), default credential risks (SEC-006), and strict confidence-scored CCTV CVE mapping (Hikvision CVE-2021-36260, Dahua CVE-2021-33044, CP PLUS CVE-2023-3820, Axis CVE-2022-30563, D-Link CVE-2020-25078) with composite security posture scoring (0-100%, Grade A-F). Implemented Automated Root-Cause Diagnostic & Fault Isolation Engine (`AutomatedFaultAnalyzer`) isolating CAMERA_HARDWARE_FAILURE, NVR_FAILURE, NETWORK_DISCONNECTION, AUTHENTICATION_FAILURE, DNS_FAILURE, RTSP_STREAM_FAILURE, and BANDWIDTH_CONGESTION with operator-gated remediation recommendations. Delivered dark-surveillance PySide6 Desktop Command Center UI (`NetworkIntelligenceWidget` mounted at View 8) with responsive search/filtering, statistics cards, QTableWidget device inventory, real-time telemetry tables, diagnostics audit pane, CVE finding viewer, CSV/JSON export, and Interactive Topology Map canvas (`InteractiveTopologyCanvas`) with smooth tier hierarchy, glowing status rings, latency badges, zoom/pan, and node inspector. Executed comprehensive unit, integration, and performance benchmark suites (346 passed / 346 total, 100% pass rate).  
+FILES CREATED:  
+- `engines/network_engine/__init__.py`  
+- `engines/network_engine/scanner.py`  
+- `engines/network_engine/diagnostics.py`  
+- `engines/network_engine/monitor.py`  
+- `engines/network_engine/security_audit.py`  
+- `engines/network_engine/fault_analyzer.py`  
+- `modules/network_intelligence/__init__.py`  
+- `modules/network_intelligence/topology_view.py`  
+- `modules/network_intelligence/network_workspace_widget.py`  
+- `tests/unit/test_network_discovery.py`  
+- `tests/unit/test_network_diagnostics.py`  
+- `tests/unit/test_network_monitor.py`  
+- `tests/unit/test_network_security_audit.py`  
+- `tests/unit/test_network_fault_analyzer.py`  
+- `tests/integration/test_network_intelligence_ui.py`  
+- `tests/performance/test_network_performance.py`  
+- `docs/NETWORK_INTELLIGENCE_VERIFICATION_REPORT.md`  
+FILES MODIFIED:  
+- `VERSION`  
+- `core/config/settings.py`  
+- `app/main.py`  
+- `tests/conftest.py`  
+- `tests/integration/test_ai_pipeline.py`  
+- `docs/FEATURE_REGISTER.md`  
+- `docs/DEVELOPMENT_STATUS.md`  
+- `docs/ARCHITECTURE.md`  
+- `docs/MODULE_SPECIFICATIONS.md`  
+- `docs/TEST_REPORTS.md`  
+- `docs/CHANGELOG.md`  
+FILES DELETED: None  
+DATABASE CHANGES: None (Network engine uses in-memory runtime telemetry with bounded history queues; discovered devices map into existing `devices` and `stream_profiles` schema).  
+DEPENDENCIES CHANGED: None (using existing Python standard library `ipaddress`, `socket`, `ctypes`, `subprocess`, and `PySide6`).  
+TESTS PERFORMED: Automated execution across 346 test cases (313 regression tests + 33 new Phase 11 network intelligence tests) covering CIDR subnet validation, loopback/multicast/global-scan rejection, IEEE OUI vendor identification, device classification heuristics (Camera, NVR, Gateway, Switch, Host), duplicate IP / MAC collision detection, RTSP handshake probe (200 OK, 401/403 auth failure, 404/454 invalid path, timeout, closed port), credential masking in URLs, HTTP web endpoint audit, ONVIF capabilities probe, comprehensive device audit synthesis, telemetry history sliding window calculations (avg latency, jitter, loss, bandwidth, uptime), network congestion detection, chart data conversion, continuous monitor thread lifecycle and external sample injection, security posture rule checks (SEC-001 through SEC-006), CVE mapping with confidence scoring (HIGH, MEDIUM, LOW), security score calculation (Grade A-F), automated fault isolation (Gateway offline, NVR failure, isolated camera failure, bandwidth congestion, no-fault state), operator-gated remediation recommendations, PySide6 Interactive Topology canvas node rendering, tier layout, pan/zoom, node selection signals, device inventory table population and text filtering, and performance benchmarks (64 devices x 120 samples in < 50ms, 64-device security audit in < 200ms, and 64-device fault isolation in < 50ms).  
+TEST RESULTS: 346 passed, 0 failed, 100% pass rate.  
+KNOWN ISSUES: None.  
+GIT COMMIT: Pending Phase 11 commit

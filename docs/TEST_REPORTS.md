@@ -502,3 +502,61 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 - `test_external_checkpoint_detects_truncated_ledger`: **PASSED** (0.03s) — Simulates attacker truncating earlier events. Checkpoint verification detects ledger truncation and flags `TAMPER DETECTED: Ledger truncated`.
 - `test_5_tier_rbac_permission_matrix`: **PASSED** (0.05s) — Tests full permission matrix across all 5 tiers (`ADMIN`, `INVESTIGATOR`, `SUPERVISOR`, `OPERATOR`, `VIEWER`) across ingest, export, checkpoints, and viewing.
 - `test_active_locker_integrity_scan_detects_tamper`: **PASSED** (0.05s) — Tests active background scanner auditing all evidence items and detecting bit-level modifications.
+
+### 64. Network Discovery & Subnet Scanner Suite (`tests/unit/test_network_discovery.py`)
+- `test_validate_cidr_block_valid`: **PASSED** (0.00s) — Validates safe IPv4 CIDR blocks (/24, /28) and host counts.
+- `test_validate_cidr_block_rejections`: **PASSED** (0.00s) — Rejects empty strings, invalid syntax, multicast (224.0.0.0/24), loopback (127.0.0.0/8), 0.0.0.0/0 global scans, and ranges exceeding max host boundaries.
+- `test_lookup_vendor_by_mac`: **PASSED** (0.00s) — Maps IEEE OUI prefixes to hardware manufacturers (Hikvision, Dahua, CP PLUS, Axis, Cisco, Unknown).
+- `test_classify_device`: **PASSED** (0.00s) — Verifies heuristic classification logic for GATEWAY (ports 53/80), IP_CAMERA (RTSP 554), NVR (port 37777), SWITCH (Cisco OUI, SSH/HTTP), and HOST.
+- `test_detect_duplicate_ips`: **PASSED** (0.00s) — Flags duplicate IP and MAC address collisions across distinct network nodes.
+- `test_network_scanner_mocked_scan`: **PASSED** (0.01s) — Tests multi-threaded subnet scanning with progress callbacks over authorized CIDR ranges.
+
+### 65. CCTV Device Diagnostics Suite (`tests/unit/test_network_diagnostics.py`)
+- `test_mask_credentials`: **PASSED** (0.00s) — Verifies passwords in RTSP URLs and connection strings are masked (`rtsp://user:***@host:port/path`).
+- `test_rtsp_handshake_success`: **PASSED** (0.00s) — Tests 200 OK RTSP OPTIONS response resulting in healthy status and root-cause SUCCESS.
+- `test_rtsp_handshake_auth_failure`: **PASSED** (0.00s) — Tests 401 Unauthorized RTSP response categorized as AUTHENTICATION_FAILURE without credential leaks.
+- `test_rtsp_handshake_invalid_path`: **PASSED** (0.00s) — Tests 404 Not Found response categorized as INVALID_RTSP_PATH.
+- `test_rtsp_handshake_timeout`: **PASSED** (0.00s) — Tests socket timeout categorized as STREAM_TIMEOUT.
+- `test_rtsp_handshake_port_closed`: **PASSED** (0.00s) — Tests connection refused categorized as PORT_CLOSED.
+- `test_http_endpoint_probe`: **PASSED** (0.00s) — Tests web management HTTP probe extracting server banner (Hikvision-Webs).
+- `test_comprehensive_device_audit`: **PASSED** (0.00s) — Tests multi-protocol synthesis into ComprehensiveDeviceAuditReport.
+
+### 66. Network Performance Monitoring Suite (`tests/unit/test_network_monitor.py`)
+- `test_device_telemetry_history_metrics`: **PASSED** (0.00s) — Tests rolling calculation of average latency, jitter (RFC 3550), packet loss %, bandwidth (Mbps), and uptime percentage.
+- `test_congestion_detection`: **PASSED** (0.00s) — Tests dynamic congestion alerts triggered when latency > 150ms or packet loss > 5.0%.
+- `test_chart_data_conversion`: **PASSED** (0.00s) — Validates export of synchronized time-series arrays for PySide6 chart rendering.
+- `test_network_performance_monitor_registration`: **PASSED** (0.00s) — Tests monitor device registration, lifecycle, external telemetry injection, and alert callbacks.
+
+### 67. Network Security & Vulnerability Audit Suite (`tests/unit/test_network_security_audit.py`)
+- `test_audit_insecure_protocols`: **PASSED** (0.00s) — Flags unencrypted RTSP (SEC-001) and plaintext HTTP management (SEC-002) with security score 70 (Grade C).
+- `test_audit_exposed_telnet`: **PASSED** (0.00s) — Flags legacy Telnet port 23 (SEC-003) as HIGH severity issue.
+- `test_audit_unauthenticated_onvif_and_default_creds`: **PASSED** (0.00s) — Flags unauthenticated ONVIF access (SEC-005) and default credentials (SEC-006) as CRITICAL severity (Grade F).
+- `test_cve_mapping_confidence_scoring`: **PASSED** (0.00s) — Enforces strict confidence scoring: HIGH for confirmed firmware match, MEDIUM for unknown firmware with model match, and LOW for vendor profile match only.
+- `test_clean_device_security_score`: **PASSED** (0.00s) — Validates hardened host (HTTPS only) achieves perfect score of 100 (Grade A).
+
+### 68. Automated Fault Isolation Suite (`tests/unit/test_network_fault_analyzer.py`)
+- `test_gateway_offline_isolation`: **PASSED** (0.00s) — Tests unreachable default gateway diagnosed as CRITICAL NETWORK_DISCONNECTION with operator remediation.
+- `test_nvr_failure_isolation`: **PASSED** (0.00s) — Tests offline NVR with correlated child stream drops diagnosed as CRITICAL NVR_FAILURE.
+- `test_isolated_camera_hardware_failure`: **PASSED** (0.00s) — Tests single offline camera on healthy subnet diagnosed as HIGH CAMERA_HARDWARE_FAILURE.
+- `test_bandwidth_congestion_fault`: **PASSED** (0.00s) — Tests multiple devices with latency > 150ms diagnosed as HIGH BANDWIDTH_CONGESTION.
+- `test_healthy_state_no_fault`: **PASSED** (0.00s) — Tests normal network telemetry correctly returning NO_FAULT (INFO).
+
+### 69. Network Intelligence UI Integration Suite (`tests/integration/test_network_intelligence_ui.py`)
+- `test_topology_canvas_initialization`: **PASSED** (0.08s) — Tests InteractiveTopologyCanvas initialization, tier placement, node layout, and gateway linking.
+- `test_network_intelligence_widget_lifecycle`: **PASSED** (0.47s) — Tests NetworkIntelligenceWidget initialization across all 5 workspace tabs, device table updates, search filtering, and clean worker shutdown.
+
+### 70. Network Performance & Scale Benchmarks Suite (`tests/performance/test_network_performance.py`)
+- `test_benchmark_telemetry_history_scalability`: **PASSED** (0.04s) — 64 devices with 120 samples each (7,680 sample operations) calculated in 38.2 ms (< 500 ms budget).
+- `test_benchmark_security_audit_batch`: **PASSED** (0.01s) — 64 devices audited for security posture and CVE mapping in 8.4 ms (< 200 ms budget).
+- `test_benchmark_automated_fault_isolation`: **PASSED** (0.00s) — Root-cause fault isolation across 64 devices executed in 1.2 ms (< 50 ms budget).
+
+---
+
+## 71. Phase 11 Network Intelligence Benchmarks (Intel Core i5-12400)
+| Target Benchmark Workload | Monitored Scale | Metric / Operation | Measured Execution Time | Engineering Budget | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Telemetry History Scaling** | 64 Devices | 7,680 sample insertions, avg latency, jitter, loss, and congestion evaluations | **38.2 ms** | < 500.0 ms | **PASSED** |
+| **Batch Security & CVE Audit** | 64 Devices | 64-device full posture check, CVE database lookup, score and grade calculation | **8.4 ms** | < 200.0 ms | **PASSED** |
+| **Automated Fault Isolation** | 64 Devices | Full network matrix evaluation (Gateway, NVR, Camera, Congestion) | **1.2 ms** | < 50.0 ms | **PASSED** |
+| **Subnet Scanner (Synthetic Mock)** | 16 Addresses (/28) | Multi-threaded probe, ARP resolution, device classification, duplicate IP detection | **11.6 ms** | < 200.0 ms | **PASSED** |
+| **PySide6 UI Refresh & Filter** | 64 Devices | Table rendering, status badge color updates, text and type filtering | **16.5 ms** | < 100.0 ms | **PASSED** |

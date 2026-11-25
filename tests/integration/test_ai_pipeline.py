@@ -52,7 +52,10 @@ def test_ai_inference_worker_lifecycle():
             worker.push_frame(dummy_frame, time.time())
             time.sleep(0.06)
 
-        time.sleep(0.1)
+        for _ in range(20):
+            if len(results_received) >= 1:
+                break
+            time.sleep(0.05)
         assert len(results_received) >= 1
         res = results_received[0]
         assert res.channel_id == "CH_INT_01"

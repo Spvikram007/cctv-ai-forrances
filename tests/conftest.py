@@ -74,3 +74,18 @@ def ensure_test_models_exist():
             onnx.save(model, str(model_path))
         except Exception:
             pass
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Ensures clean shutdown of any Qt or background thread resources."""
+    try:
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app:
+            app.closeAllWindows()
+            app.processEvents()
+            app.quit()
+        import gc
+        gc.collect()
+    except Exception:
+        pass

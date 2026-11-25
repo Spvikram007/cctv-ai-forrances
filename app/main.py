@@ -26,6 +26,7 @@ from modules.ai_intelligence.ai_dashboard_widget import AIDashboardWidget
 from modules.anpr_intelligence.anpr_workspace_widget import ANPRWorkspaceWidget
 from modules.video_forensics.forensics_workspace_widget import VideoForensicsWidget
 from modules.video_enhancement.enhancement_widget import VideoEnhancementWidget
+from modules.network_intelligence.network_workspace_widget import NetworkIntelligenceWidget
 from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
 from engines.video_engine.stream_manager import stream_manager
 from engines.video_engine.playback_controller import playback_controller
@@ -144,8 +145,19 @@ class MainWindow(QMainWindow):
         self.enhancement_widget = VideoEnhancementWidget()
         self.stack.addWidget(self.enhancement_widget)
 
-        # Views 7 to 14: Module Placeholders
-        for idx, (title, desc) in enumerate(self.NAV_ITEMS[7:], start=7):
+        # View 7: Device Management Placeholder
+        placeholder_devices = ModulePlaceholderWidget(
+            module_title="DEVICES",
+            phase_info="ONVIF/RTSP/NVR/DVR Camera Management — Device Discovery available in header toolbar.",
+        )
+        self.stack.addWidget(placeholder_devices)
+
+        # View 8: Network Intelligence Workspace (Phase 11 - F-019)
+        self.network_widget = NetworkIntelligenceWidget()
+        self.stack.addWidget(self.network_widget)
+
+        # Views 9 to 14: Module Placeholders
+        for idx, (title, desc) in enumerate(self.NAV_ITEMS[9:], start=9):
             phase_num = f"Phase {idx}" if idx < 12 else "Phase 12+"
             placeholder = ModulePlaceholderWidget(
                 module_title=f"{title.upper()}",
@@ -290,6 +302,8 @@ class MainWindow(QMainWindow):
         """Handles clean application shutdown on window close."""
         self.clock_timer.stop()
         self.telemetry_timer.stop()
+        if hasattr(self, "network_widget") and hasattr(self.network_widget, "monitor"):
+            self.network_widget.monitor.stop()
         inference_worker_manager.stop_all()
         recording_manager.stop_all()
         playback_controller.stop()
