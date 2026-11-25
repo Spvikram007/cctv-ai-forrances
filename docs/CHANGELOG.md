@@ -903,3 +903,53 @@ TESTS PERFORMED: Full platform regression suite execution across 388 automated t
 TEST RESULTS: 388 passed, 0 failed, 100% pass rate.  
 KNOWN ISSUES: None.  
 GIT COMMIT: Pending commit for CHG-20261125-009
+
+
+## [1.4.0-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-013  
+FEATURE ID: F-022, F-025, F-048  
+DATE: 2026-11-25  
+VERSION: 1.4.0-alpha  
+CHANGE TYPE: NEW FEATURE & ENTERPRISE SECURITY GOVERNANCE  
+DESCRIPTION: Implemented Phase 14 User Management, Role-Based Access Control (RBAC), Tamper-Evident Audit Reporting, and Multi-Format Evidence Export (PDF/CSV). Built user lifecycle administration with `bcrypt` credential hashing (cost 12), legacy SHA-256 upgrade path, failed attempt tracking with automated account lockout (5 attempts, 15m duration), Super Administrator lockout immunity, and cryptographic session tokens with idle expiration. Established granular RBAC architecture with 10 default hierarchical roles (Super Admin, Admin, Security Manager, Supervisor, CCTV Operator, Investigator, Evidence Manager, Technician, Auditor, Read-Only Viewer) and 22 fine-grained permissions across 15 operational subsystems. Implemented backend `@require_permission` authorization enforcement, thread-local security context, and privilege escalation protection. Developed operational audit logging across 11 categories (AUTH, USER, ROLE, CAMERA, PTZ, PLAYBACK, EVIDENCE, ALARM, STORAGE, NETWORK, SYSTEM) with automatic password/token scrubbing, sequential SHA-256 Merkle hash chaining, independent cryptographic verification (`verify_audit_integrity()`), and append-only disk ledger (`storage/logs/audit_ledger.jsonl`). Built high-resolution 300 DPI A4 PDF report generator using PySide6 `QPdfWriter` + `QTextDocument`, and RFC 4180 CSV export with spreadsheet formula-injection protection (CWE-1236, neutralizing `=, +, -, @, \t, \r` prefixes). Replaced desktop placeholders with native PySide6 Command Center workspaces mounted at View 13 (`UserManagementWidget`, 3 tabs) and View 11 (`ReportingWorkspaceWidget`, 3 tabs). Executed full platform regression test suite with 484/484 tests passing (100% pass rate in 69.35s).  
+FILES CREATED:  
+- `docs/PHASE_14_IMPLEMENTATION_PLAN.md`  
+- `docs/PHASE_14_IMPLEMENTATION_REPORT.md`  
+- `database/migrations/versions/78a12e9b04f1_phase14_user_mgmt_rbac_audit.py`  
+- `core/security/password.py`  
+- `core/security/rbac.py`  
+- `core/security/decorators.py`  
+- `core/security/user_service.py`  
+- `core/security/audit_service.py`  
+- `modules/user_management/__init__.py`  
+- `modules/user_management/user_dialog.py`  
+- `modules/user_management/user_management_widget.py`  
+- `modules/reporting/__init__.py`  
+- `modules/reporting/pdf_generator.py`  
+- `modules/reporting/csv_exporter.py`  
+- `modules/reporting/report_service.py`  
+- `modules/reporting/reporting_widget.py`  
+- `scripts/relink_audit_chain.py`  
+- `tests/unit/test_user_management.py`  
+- `tests/unit/test_rbac_service.py`  
+- `tests/unit/test_audit_service.py`  
+- `tests/unit/test_reporting_export.py`  
+- `tests/integration/test_phase14_workspaces.py`  
+FILES MODIFIED:  
+- `VERSION`  
+- `core/config/settings.py`  
+- `database/models/users.py`  
+- `database/database_manager.py`  
+- `app/bootstrap.py`  
+- `app/main.py`  
+- `docs/FEATURE_REGISTER.md`  
+- `docs/DEVELOPMENT_STATUS.md`  
+- `docs/CHANGELOG.md`  
+FILES DELETED: None  
+DATABASE CHANGES: Added columns `failed_login_attempts`, `locked_until`, `last_login_at`, `last_activity_at`, `password_changed_at` to `users`; added `last_seen_at` to `user_sessions`; added `username`, `category`, `status`, `session_id`, `correlation_id`, `prev_hash`, `record_hash` to `audit_logs`. Seeded 10 standard surveillance roles and 22 fine-grained permissions.  
+DEPENDENCIES CHANGED: None.  
+TESTS PERFORMED: Full platform regression suite across 484 automated tests (319 unit tests, 102 integration tests, 63 performance benchmarks). 100% pass rate in 69.35s. Process exit code 0 strictly verified via `$LASTEXITCODE`.  
+TEST RESULTS: 484 passed, 0 failed, 100% pass rate.  
+KNOWN ISSUES: None.  
+GIT COMMIT: Pending commit for CHG-20261125-013  

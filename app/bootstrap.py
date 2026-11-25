@@ -13,48 +13,37 @@ from app.application_state import app_state
 from core.hardware.detector import HardwareDetector
 from database.database_manager import db_manager
 from database.models.users import Role, User
+from core.security.rbac import rbac_service
+from core.security.password import hash_password
 
 logger = get_logger("bootstrap")
 
 
 def seed_initial_security_data() -> None:
-    """Seeds default RBAC roles and default local administrator if database is fresh."""
-    default_roles = [
-        ("Administrator", "Unrestricted system control and configuration.", True),
-        ("Supervisor", "Operational monitoring, alert management, and team oversight.", True),
-        ("Operator", "Live camera view, PTZ control, and manual recording.", True),
-        ("Investigator", "Playback, forensic analysis, evidence export, and reporting.", True),
-        ("Viewer", "Read-only live viewing of authorized camera streams.", True),
-    ]
-
+    """Seeds default RBAC roles, granular permissions, and default local administrator."""
     with db_manager.get_session() as session:
-        # 1. Seed Roles
-        for role_name, desc, is_sys in default_roles:
-            existing_role = session.query(Role).filter_by(name=role_name).first()
-            if not existing_role:
-                new_role = Role(name=role_name, description=desc, is_system=is_sys)
-                session.add(new_role)
-                logger.info("Seeded default role: %s", role_name)
+        # 1. Seed All 22 Permissions and 10 Standard Hierarchical Roles
+        rbac_service.seed_permissions_and_roles(session)
 
-        session.flush()
-
-        # 2. Seed Default Admin if no users exist
+        # 2. Seed Default Super Admin if no users exist
         admin_count = session.query(User).count()
         if admin_count == 0:
-            admin_role = session.query(Role).filter_by(name="Administrator").first()
-            if admin_role:
-                # Default local admin password: 'Admin@SecureOffline2026'
-                hashed = hashlib.sha256("Admin@SecureOffline2026".encode("utf-8")).hexdigest()
+            super_admin_role = session.query(Role).filter_by(name="Super Administrator").first() or \
+                               session.query(Role).filter_by(name="Administrator").first()
+            if super_admin_role:
+                # Default local admin password: 'Admin@SecureOffline2026' with bcrypt hash
+                hashed = hash_password("Admin@SecureOffline2026")
                 admin_user = User(
                     username="admin",
                     email="admin@cctv.local",
                     password_hash=hashed,
                     full_name="System Administrator",
-                    role_id=admin_role.id,
+                    role_id=super_admin_role.id,
                     is_active=True,
                 )
                 session.add(admin_user)
-                logger.info("Default local offline administrator account initialized ('admin').")
+                session.commit()
+                logger.info("Default local offline administrator account initialized ('admin' as Super Administrator).")
 
 
 def bootstrap_application() -> Dict[str, Any]:

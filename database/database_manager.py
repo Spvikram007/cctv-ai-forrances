@@ -147,6 +147,52 @@ class DatabaseManager:
                         if "health_score" not in vol_cols:
                             conn.execute(text("ALTER TABLE storage_volumes ADD COLUMN health_score FLOAT DEFAULT 100.0"))
                     cursor.close()
+
+                    # Upgrade users, user_sessions, and audit_logs tables for Phase 14 User Management, RBAC & Audit
+                    cursor = conn.connection.cursor()
+                    cursor.execute("PRAGMA table_info(users)")
+                    user_cols = {row[1] for row in cursor.fetchall()}
+                    if user_cols:
+                        if "failed_login_attempts" not in user_cols:
+                            conn.execute(text("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0"))
+                        if "locked_until" not in user_cols:
+                            conn.execute(text("ALTER TABLE users ADD COLUMN locked_until TIMESTAMP"))
+                        if "last_login_at" not in user_cols:
+                            conn.execute(text("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP"))
+                        if "last_activity_at" not in user_cols:
+                            conn.execute(text("ALTER TABLE users ADD COLUMN last_activity_at TIMESTAMP"))
+                        if "password_changed_at" not in user_cols:
+                            conn.execute(text("ALTER TABLE users ADD COLUMN password_changed_at TIMESTAMP"))
+
+                    cursor.execute("PRAGMA table_info(user_sessions)")
+                    session_cols = {row[1] for row in cursor.fetchall()}
+                    if session_cols:
+                        if "last_seen_at" not in session_cols:
+                            conn.execute(text("ALTER TABLE user_sessions ADD COLUMN last_seen_at TIMESTAMP"))
+
+                    cursor.execute("PRAGMA table_info(audit_logs)")
+                    audit_cols = {row[1] for row in cursor.fetchall()}
+                    if audit_cols:
+                        if "username" not in audit_cols:
+                            conn.execute(text("ALTER TABLE audit_logs ADD COLUMN username VARCHAR(50)"))
+                        if "category" not in audit_cols:
+                            conn.execute(text("ALTER TABLE audit_logs ADD COLUMN category VARCHAR(50)"))
+                        if "status" not in audit_cols:
+                            conn.execute(text("ALTER TABLE audit_logs ADD COLUMN status VARCHAR(20) DEFAULT 'SUCCESS'"))
+                        if "session_id" not in audit_cols:
+                            conn.execute(text("ALTER TABLE audit_logs ADD COLUMN session_id VARCHAR(255)"))
+                        if "correlation_id" not in audit_cols:
+                            conn.execute(text("ALTER TABLE audit_logs ADD COLUMN correlation_id VARCHAR(64)"))
+                        if "prev_hash" not in audit_cols:
+                            conn.execute(text("ALTER TABLE audit_logs ADD COLUMN prev_hash VARCHAR(64)"))
+                        if "record_hash" not in audit_cols:
+                            conn.execute(text("ALTER TABLE audit_logs ADD COLUMN record_hash VARCHAR(64)"))
+                    cursor.close()
+
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_username ON audit_logs (username)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_category ON audit_logs (category)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_status ON audit_logs (status)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_correlation_id ON audit_logs (correlation_id)"))
         except Exception as e:
             logger.debug("Schema migration notice: %s", e)
 

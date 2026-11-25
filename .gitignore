@@ -83,6 +83,8 @@ storage/exports/*
 !storage/exports/.gitkeep
 storage/backups/*
 !storage/backups/.gitkeep
+storage/reports/*
+!storage/reports/.gitkeep
 storage/logs/*
 !storage/logs/.gitkeep
 
@@ -110,3 +112,6 @@ storage/vault/*
 *.crt
 *.pfx
 credentials.json
+
+# Reference Codebases
+ref/

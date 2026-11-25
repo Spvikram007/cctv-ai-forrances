@@ -3,7 +3,8 @@ User and Security Database Models.
 Implements RBAC (Role-Based Access Control), Sessions, and Immutable Audit Trails.
 """
 
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text
+from datetime import datetime, timezone
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Integer
 from sqlalchemy.orm import relationship
 from database.models.base import Base
 
@@ -48,6 +49,13 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     role_id = Column(String(36), ForeignKey("roles.id"), nullable=False, index=True)
 
+    # Phase 14 Security & Account Lockout
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    last_activity_at = Column(DateTime(timezone=True), nullable=True)
+    password_changed_at = Column(DateTime(timezone=True), nullable=True)
+
     role = relationship("Role", back_populates="users")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
@@ -62,6 +70,7 @@ class UserSession(Base):
     user_agent = Column(String(255), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     is_revoked = Column(Boolean, default=False, nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     user = relationship("User", back_populates="sessions")
 
@@ -75,5 +84,14 @@ class AuditLog(Base):
     resource_id = Column(String(36), nullable=True)
     details_json = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
+
+    # Phase 14 Categorization, Status & Cryptographic Hash Chaining
+    username = Column(String(50), nullable=True, index=True)
+    category = Column(String(50), nullable=True, index=True)  # AUTH, USER, ROLE, CAMERA, PTZ, PLAYBACK, EVIDENCE, ALARM, STORAGE, SYSTEM
+    status = Column(String(20), default="SUCCESS", nullable=False, index=True)  # SUCCESS, FAILED, DENIED
+    session_id = Column(String(255), nullable=True)
+    correlation_id = Column(String(64), nullable=True, index=True)
+    prev_hash = Column(String(64), nullable=True)
+    record_hash = Column(String(64), nullable=True)
 
     user = relationship("User", back_populates="audit_logs")

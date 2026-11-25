@@ -29,6 +29,8 @@ from modules.video_enhancement.enhancement_widget import VideoEnhancementWidget
 from modules.network_intelligence.network_workspace_widget import NetworkIntelligenceWidget
 from modules.alarm_management.alarm_workspace_widget import AlarmManagementWidget
 from modules.storage_management.storage_workspace_widget import StorageManagementWidget
+from modules.reporting.reporting_widget import ReportingWorkspaceWidget
+from modules.user_management.user_management_widget import UserManagementWidget
 from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
 from engines.video_engine.stream_manager import stream_manager
 from engines.video_engine.playback_controller import playback_controller
@@ -167,14 +169,27 @@ class MainWindow(QMainWindow):
         self.storage_widget = StorageManagementWidget()
         self.stack.addWidget(self.storage_widget)
 
-        # Views 11 to 14: Module Placeholders
-        for idx, (title, desc) in enumerate(self.NAV_ITEMS[11:], start=11):
-            phase_num = f"Phase {idx}" if idx < 15 else "Phase 15+"
-            placeholder = ModulePlaceholderWidget(
-                module_title=f"{title.upper()}",
-                phase_info=f"{desc} — Scheduled for implementation under {phase_num}.",
-            )
-            self.stack.addWidget(placeholder)
+        # View 11: Reports, Audit Logs & Multi-Format Evidence Export (Phase 14 - F-025)
+        self.reporting_widget = ReportingWorkspaceWidget()
+        self.stack.addWidget(self.reporting_widget)
+
+        # View 12: AI Model Registry (Placeholder)
+        placeholder_models = ModulePlaceholderWidget(
+            module_title="AI MODELS",
+            phase_info="OpenVINO & ONNX Model Registry — Scheduled for implementation under Phase 15.",
+        )
+        self.stack.addWidget(placeholder_models)
+
+        # View 13: User Management, Roles & RBAC Security Policies (Phase 14 - F-022 & F-048)
+        self.user_management_widget = UserManagementWidget()
+        self.stack.addWidget(self.user_management_widget)
+
+        # View 14: Settings (Placeholder)
+        placeholder_settings = ModulePlaceholderWidget(
+            module_title="SETTINGS",
+            phase_info="System, Network & Video Configuration — Scheduled for implementation under Phase 15+.",
+        )
+        self.stack.addWidget(placeholder_settings)
 
         workspace_layout.addWidget(self.stack, stretch=1)
         root_layout.addLayout(workspace_layout, stretch=1)
