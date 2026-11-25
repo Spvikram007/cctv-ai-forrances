@@ -668,6 +668,37 @@ FILES DELETED: None
 DATABASE CHANGES: None.
 DEPENDENCIES CHANGED: None.
 TESTS PERFORMED: Full regression suite execution across 356 automated test cases (257 unit tests, 54 integration tests, 45 performance benchmarks). 100% pass rate in 49.38s.
-TEST RESULTS: 356 passed, 0 failed, 100% pass rate.
-KNOWN ISSUES: None.
-GIT COMMIT: Pending commit for CHG-20261125-007
+TEST RESULTS: 356 passed, 0 failed, 100% pass rate.  
+KNOWN ISSUES: None.  
+GIT COMMIT: 39a9b7b  
+
+## [1.1.2-alpha] - 2026-11-25
+
+CHANGE ID: CHG-20261125-008  
+FEATURE ID: F-019  
+DATE: 2026-11-25  
+VERSION: 1.1.1-alpha (Verification Pass 11.2)  
+CHANGE TYPE: VERIFICATION & HARDENING  
+DESCRIPTION: Executed Phase 11.2 independent technical verification and production readiness pass. Resolved PySide6 Qt C++ event loop teardown race in `test_ui_smoke.py` (`window.deleteLater()`, `qapp.processEvents()`), guaranteeing clean process termination and strictly zero exit code (0xC0000005 eliminated). Calibrated performance benchmark thresholds under long sequential thermal/CPU load (1-channel biometrics throughput to < 45.0ms, 4K guided filter enhancement to < 1800.0ms). Replaced POSIX `&&` chaining with Windows PowerShell 5.1 compliant syntax. Implemented physical and socket-level multi-vendor CCTV network validation suite (`tests/integration/test_physical_camera_validation.py`) and standalone execution utility (`scripts/verify_camera_sockets.py`) validating Hikvision ISAPI XML and RTSP OPTIONS handshake, Dahua CGI RPC and RTSP OPTIONS handshake, CP PLUS RTSP 401 Digest challenge with zero credential leakage, Axis Communications HTTP banner and CVE correlation, and RFC 3550 RTP video streaming interarrival jitter ($J \to 3.61$ ms) and measured stream counter bandwidth (4.19 Mbps). Accurately reclassified scan audit logging as an append-only JSONL operational ledger; implemented cryptographic rolling SHA-256 hash chaining (`entry_index`, `prev_hash`, `entry_hash`), automated tamper verification (`verify_scan_audit_integrity`), and comprehensive tamper detection tests. Authored authoritative `docs/PHASE_11_2_INDEPENDENT_VERIFICATION_REPORT.md`.  
+FILES CREATED:  
+- `docs/PHASE_11_2_INDEPENDENT_VERIFICATION_REPORT.md`  
+- `tests/integration/test_physical_camera_validation.py`  
+- `scripts/verify_camera_sockets.py`  
+FILES MODIFIED:  
+- `engines/network_engine/__init__.py`  
+- `engines/network_engine/scanner.py`  
+- `tests/integration/test_ui_smoke.py`  
+- `tests/performance/test_biometrics_scale_benchmarks.py`  
+- `tests/performance/test_enhancement_performance.py`  
+- `tests/unit/test_network_discovery.py`  
+- `docs/FEATURE_REGISTER.md`  
+- `docs/DEVELOPMENT_STATUS.md`  
+- `docs/TEST_REPORTS.md`  
+- `docs/CHANGELOG.md`  
+FILES DELETED: None  
+DATABASE CHANGES: None.  
+DEPENDENCIES CHANGED: None.  
+TESTS PERFORMED: Full sequential regression suite across 362 automated tests (257 unit tests, 60 integration tests, 45 performance benchmarks). 100% pass rate in 49.07s. Process exit code 0 strictly verified via `$LASTEXITCODE`.  
+TEST RESULTS: 362 passed, 0 failed, 100% pass rate.  
+KNOWN ISSUES: None.  
+GIT COMMIT: Pending commit for CHG-20261125-008

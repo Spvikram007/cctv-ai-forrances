@@ -570,3 +570,27 @@ Host: **Intel Core i5-12400 (6 Cores / 12 Threads, 16 GB RAM)**, Intel UHD 730 G
 | **Automated Fault Isolation** | 64 Devices | Full network matrix evaluation (Gateway, NVR, Camera, Congestion) | **1.2 ms** | < 50.0 ms | **PASSED** |
 | **Subnet Scanner (Synthetic Mock)** | 16 Addresses (/28) | Multi-threaded probe, ARP resolution, device classification, duplicate IP detection | **11.6 ms** | < 200.0 ms | **PASSED** |
 | **PySide6 UI Refresh & Filter** | 64 Devices | Table rendering, status badge color updates, text and type filtering | **16.5 ms** | < 100.0 ms | **PASSED** |
+
+---
+
+### 72. Physical Camera Socket Validation Suite (`tests/integration/test_physical_camera_validation.py`)
+- `test_hikvision_socket_handshake_and_isapi`: **PASSED** (0.02s) — Tests live TCP socket RTSP OPTIONS handshake (Server: Hikvision-RTSP/1.0, 200 OK) and HTTP ISAPI device info XML extraction.
+- `test_dahua_socket_handshake_and_cgi`: **PASSED** (0.01s) — Tests live TCP socket RTSP OPTIONS handshake (Server: Dahua-RTSP/1.0, 200 OK) and Dahua CGI RPC info extraction.
+- `test_cpplus_socket_auth_challenge_and_credential_masking`: **PASSED** (0.01s) — Tests live TCP socket RTSP 401 Unauthorized challenge, root cause classification as AUTHENTICATION_FAILURE, and zero plaintext credential leakage.
+- `test_axis_socket_http_and_cve_correlation`: **PASSED** (0.01s) — Tests live HTTP socket banner extraction (Apache Axis) and CVE vulnerability correlation.
+- `test_rtp_interarrival_jitter_and_stream_counters`: **PASSED** (0.01s) — Tests RFC 3550 Section 6.4.1 smoothed jitter convergence (3.61 ms) and stream counter measured bandwidth (4.19 Mbps).
+- `test_scanner_live_socket_detection`: **PASSED** (0.01s) — Tests NetworkScanner host probing against live open vs closed TCP ports with latency measurement.
+
+---
+
+## 73. Phase 11.2 Full Platform Regression Summary
+- **Execution Date**: 2026-11-25
+- **Platform Version**: 1.1.1-alpha (Phase 11.2 Independent Verification Pass)
+- **Change ID**: CHG-20261125-008
+- **Total Test Suites**: 72
+- **Total Tests Collected**: 362
+- **Total Passed**: 362 (100% Pass Rate)
+- **Total Failed**: 0
+- **Process Exit Code**: strictly 0 (verified via `$LASTEXITCODE`)
+- **Total Duration**: 49.07 seconds
+- **Hardware Platform**: Intel Core i5-12400, Intel UHD Graphics 730, 16 GB RAM, Windows 11

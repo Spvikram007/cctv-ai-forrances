@@ -53,3 +53,5 @@ def test_main_window_smoke(qapp, tmp_path):
 
     # Clean shutdown
     window.close()
+    window.deleteLater()
+    qapp.processEvents()

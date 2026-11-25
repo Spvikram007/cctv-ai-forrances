@@ -205,14 +205,14 @@ def test_compute_scan_scope_boundaries_and_batching():
 
 
 def test_record_scan_audit_logging(tmp_path):
-    """Verify record_scan_audit writes immutable structured audit entries."""
+    """Verify record_scan_audit writes structured audit entries with rolling SHA-256 hash chaining."""
     import os
     import json
-    from engines.network_engine.scanner import compute_scan_scope, record_scan_audit
+    from engines.network_engine.scanner import compute_scan_scope, record_scan_audit, verify_scan_audit_integrity
 
     audit_file = str(tmp_path / "test_scan_audit.jsonl")
     scope = compute_scan_scope("192.168.50.0/24")
-    record_scan_audit(
+    record = record_scan_audit(
         scope=scope,
         discovered_count=5,
         operator="test_operator",
@@ -222,10 +222,48 @@ def test_record_scan_audit_logging(tmp_path):
     assert os.path.exists(audit_file)
     with open(audit_file, "r", encoding="utf-8") as f:
         line = f.readline().strip()
-        record = json.loads(line)
+        record_from_file = json.loads(line)
 
-    assert record["cidr"] == "192.168.50.0/24"
-    assert record["total_hosts"] == 256
-    assert record["discovered_devices"] == 5
-    assert record["operator"] == "test_operator"
-    assert "timestamp" in record
+    assert record_from_file["cidr"] == "192.168.50.0/24"
+    assert record_from_file["total_hosts"] == 256
+    assert record_from_file["discovered_devices"] == 5
+    assert record_from_file["operator"] == "test_operator"
+    assert "timestamp" in record_from_file
+    assert "entry_hash" in record_from_file
+    assert record_from_file["prev_hash"] == "0" * 64
+
+    # Verify integrity of single entry
+    is_valid, count, err = verify_scan_audit_integrity(audit_file)
+    assert is_valid is True
+    assert count == 1
+    assert err is None
+
+    # Append second entry and verify chain
+    scope2 = compute_scan_scope("10.0.0.0/24")
+    record_scan_audit(
+        scope=scope2,
+        discovered_count=12,
+        operator="admin",
+        audit_log_path=audit_file,
+    )
+
+    is_valid, count, err = verify_scan_audit_integrity(audit_file)
+    assert is_valid is True
+    assert count == 2
+    assert err is None
+
+    # Test Tamper Detection
+    with open(audit_file, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    
+    tampered_rec = json.loads(lines[0])
+    tampered_rec["discovered_devices"] = 999  # modify payload without updating hash
+    lines[0] = json.dumps(tampered_rec) + "\n"
+    
+    with open(audit_file, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+    is_valid_tampered, tampered_idx, err_tampered = verify_scan_audit_integrity(audit_file)
+    assert is_valid_tampered is False
+    assert tampered_idx == 0
+    assert "Tampered record at entry 0" in err_tampered

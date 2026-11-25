@@ -14,6 +14,7 @@ import ipaddress
 import time
 import json
 import math
+import hashlib
 from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass, field, asdict
@@ -294,8 +295,19 @@ def record_scan_audit(
     discovered_count: int,
     operator: str = "Operator",
     audit_log_path: Optional[str] = None,
-) -> None:
-    """Preserves immutable audit records of all executed network scans."""
+) -> Optional[Dict[str, Any]]:
+    """
+    Appends audit event records of executed network scans into an append-only JSONL log
+    with rolling SHA-256 tamper-evident hash chaining.
+
+    Threat Model & Security Boundary:
+    The scan audit log provides an append-only operational audit trail with cryptographic
+    rolling SHA-256 hash chaining. Each record cryptographically seals the previous record's
+    hash, detecting historical record modification, deletion, or insertion.
+    However, like any standard file on an operating system, it is NOT immune to intentional
+    truncation or overwriting by privileged OS administrators unless backed by OS-level file
+    permissions (e.g. NTFS ACLs), remote append-only syslog forwarding, or hardware WORM storage.
+    """
     try:
         if audit_log_path:
             log_file = Path(audit_log_path)
@@ -305,7 +317,24 @@ def record_scan_audit(
             log_dir.mkdir(parents=True, exist_ok=True)
             log_file = log_dir / "scan_audit.jsonl"
 
+        prev_hash = "0" * 64
+        entry_index = 0
+
+        # Read last entry to obtain prev_hash if file exists
+        if log_file.exists() and log_file.stat().st_size > 0:
+            try:
+                with open(log_file, "r", encoding="utf-8") as f:
+                    lines = [ln.strip() for ln in f if ln.strip()]
+                    if lines:
+                        last_record = json.loads(lines[-1])
+                        prev_hash = last_record.get("entry_hash", "0" * 64)
+                        entry_index = last_record.get("entry_index", len(lines) - 1) + 1
+            except Exception as read_err:
+                logger.debug("Failed reading previous scan audit hash: %s", read_err)
+                prev_hash = "0" * 64
+
         record = {
+            "entry_index": entry_index,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "operator": operator,
             "cidr": scope.cidr,
@@ -313,11 +342,65 @@ def record_scan_audit(
             "batch_count": scope.batch_count,
             "is_local_subnet": scope.is_local_subnet,
             "discovered_devices": discovered_count,
+            "prev_hash": prev_hash,
         }
+
+        # Calculate canonical SHA-256 digest
+        canonical_payload = json.dumps(record, sort_keys=True)
+        entry_hash = hashlib.sha256(canonical_payload.encode("utf-8")).hexdigest()
+        record["entry_hash"] = entry_hash
+
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
+
+        return record
     except Exception as e:
         logger.debug("Failed recording scan audit: %s", e)
+        return None
+
+
+def verify_scan_audit_integrity(audit_log_path: Optional[str] = None) -> Tuple[bool, int, Optional[str]]:
+    """
+    Verifies the cryptographic integrity of the scan audit log.
+    Validates rolling SHA-256 hash chains across all recorded entries.
+    Returns:
+        (is_valid: bool, record_count: int, error_message: Optional[str])
+    """
+    log_file = Path(audit_log_path) if audit_log_path else Path("storage/logs/scan_audit.jsonl")
+    if not log_file.exists() or log_file.stat().st_size == 0:
+        return True, 0, None
+
+    try:
+        with open(log_file, "r", encoding="utf-8") as f:
+            lines = [ln.strip() for ln in f if ln.strip()]
+
+        expected_prev_hash = "0" * 64
+        for idx, line in enumerate(lines):
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as err:
+                return False, idx, f"Corrupted JSON format at entry {idx}: {err}"
+
+            recorded_hash = record.get("entry_hash")
+            recorded_prev = record.get("prev_hash")
+
+            # Check previous hash link
+            if recorded_prev != expected_prev_hash:
+                return False, idx, f"Hash chain broken at entry {idx}: expected prev_hash {expected_prev_hash}, found {recorded_prev}"
+
+            # Verify entry hash
+            payload_dict = {k: v for k, v in record.items() if k != "entry_hash"}
+            canonical = json.dumps(payload_dict, sort_keys=True)
+            computed_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+            if computed_hash != recorded_hash:
+                return False, idx, f"Tampered record at entry {idx}: computed {computed_hash} != stored {recorded_hash}"
+
+            expected_prev_hash = recorded_hash
+
+        return True, len(lines), None
+    except Exception as e:
+        return False, 0, f"Audit verification failed: {e}"
 
 
 def get_default_gateway() -> Optional[str]:
