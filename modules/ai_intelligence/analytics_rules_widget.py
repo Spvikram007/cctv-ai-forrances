@@ -369,7 +369,7 @@ class AnalyticsRulesWidget(QWidget):
         rules_layout.addWidget(QLabel("Configured Camera Rules:"))
         self.tbl_rules = QTableWidget(0, 6)
         self.tbl_rules.setHorizontalHeaderLabels(["Name", "Type", "Target", "Severity", "Active", "Actions"])
-        self.tbl_rules.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_rules.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_rules.setStyleSheet("background-color: #0d1117; color: #c9d1d9; gridline-color: #30363d;")
         rules_layout.addWidget(self.tbl_rules)
 

@@ -167,9 +167,9 @@ class ReportingWorkspaceWidget(QWidget):
             "Timestamp (IST)", "User", "Category", "Action", "Status",
             "Source IP", "Details", "Record Hash"
         ])
-        self.table_audit.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table_audit.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.table_audit.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeToContents)
+        self.table_audit.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_audit.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.table_audit.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
         self.table_audit.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_audit.setAlternatingRowColors(True)
         self.table_audit.setStyleSheet("""

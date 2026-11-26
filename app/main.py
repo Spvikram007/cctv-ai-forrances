@@ -32,6 +32,7 @@ from modules.storage_management.storage_workspace_widget import StorageManagemen
 from modules.reporting.reporting_widget import ReportingWorkspaceWidget
 from modules.user_management.user_management_widget import UserManagementWidget
 from modules.camera_management.discovery_dialog import DeviceDiscoveryDialog
+from modules.camera_management.devices_widget import DeviceManagementWidget
 from engines.video_engine.stream_manager import stream_manager
 from engines.video_engine.playback_controller import playback_controller
 from engines.recording_engine.recording_manager import recording_manager
@@ -39,6 +40,9 @@ from engines.ai_engine.inference_worker import inference_worker_manager
 from core.workers.worker_manager import worker_manager
 from database.database_manager import db_manager
 from core.config.settings import settings
+from core.logging.logger import get_logger
+
+logger = get_logger("main")
 
 
 class ModulePlaceholderWidget(QWidget):
@@ -47,21 +51,21 @@ class ModulePlaceholderWidget(QWidget):
     def __init__(self, module_title: str, phase_info: str, parent: Optional[QWidget] = None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignCenter)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         card = QFrame()
         card.setProperty("class", "card")
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(40, 40, 40, 40)
-        card_layout.setAlignment(Qt.AlignCenter)
+        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         lbl_title = QLabel(module_title)
         lbl_title.setStyleSheet("font-size: 20px; font-weight: 700; color: #58a6ff; margin-bottom: 8px;")
-        lbl_title.setAlignment(Qt.AlignCenter)
+        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         lbl_phase = QLabel(phase_info)
         lbl_phase.setStyleSheet("font-size: 14px; color: #8b949e;")
-        lbl_phase.setAlignment(Qt.AlignCenter)
+        lbl_phase.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         card_layout.addWidget(lbl_title)
         card_layout.addWidget(lbl_phase)
@@ -91,6 +95,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        self._is_shutting_down = False
         self.setWindowTitle("CCTV AI Intelligence Platform - Command Center")
         self.resize(1440, 900)
         self.setMinimumSize(1100, 700)
@@ -149,12 +154,9 @@ class MainWindow(QMainWindow):
         self.enhancement_widget = VideoEnhancementWidget()
         self.stack.addWidget(self.enhancement_widget)
 
-        # View 7: Device Management Placeholder
-        placeholder_devices = ModulePlaceholderWidget(
-            module_title="DEVICES",
-            phase_info="ONVIF/RTSP/NVR/DVR Camera Management — Device Discovery available in header toolbar.",
-        )
-        self.stack.addWidget(placeholder_devices)
+        # View 7: Device Management Workspace (ONVIF/RTSP/NVR/DVR Camera Management)
+        self.devices_widget = DeviceManagementWidget()
+        self.stack.addWidget(self.devices_widget)
 
         # View 8: Network Intelligence Workspace (Phase 11 - F-019)
         self.network_widget = NetworkIntelligenceWidget()
@@ -301,7 +303,8 @@ class MainWindow(QMainWindow):
         """Handles alarm request to jump directly to incident footage in Playback Workspace."""
         self._switch_view(2)  # Switch to Playback (View 2)
         try:
-            playback_controller.seek_to_timestamp(camera_id, timestamp_iso)
+            target_dt = datetime.fromisoformat(timestamp_iso)
+            playback_controller.seek_to_timestamp(target_dt)
         except Exception as e:
             logger.debug("Playback seek from alarm: %s", e)
 
@@ -330,18 +333,44 @@ class MainWindow(QMainWindow):
     def _open_discovery_dialog(self) -> None:
         """Opens camera discovery and manual addition dialog."""
         dialog = DeviceDiscoveryDialog(self)
+        if hasattr(self, "devices_widget"):
+            dialog.camera_registered.connect(self.devices_widget.refresh_devices)
         dialog.exec()
 
     def closeEvent(self, event) -> None:
-        """Handles clean application shutdown on window close."""
+        """Handles clean application shutdown on window close. Fully idempotent."""
+        if getattr(self, "_is_shutting_down", False):
+            event.accept()
+            return
+        self._is_shutting_down = True
+
         self.clock_timer.stop()
         self.telemetry_timer.stop()
         if hasattr(self, "network_widget") and hasattr(self.network_widget, "monitor"):
             self.network_widget.monitor.stop()
+        if hasattr(self, "playback_widget") and hasattr(self.playback_widget, "stop"):
+            self.playback_widget.stop()
+        if hasattr(self, "storage_widget") and hasattr(self.storage_widget, "stop"):
+            self.storage_widget.stop(timeout=2.5)
+        try:
+            from engines.storage_engine.storage_service import enterprise_storage_service
+            enterprise_storage_service.stop_scheduler()
+        except Exception:
+            pass
+        try:
+            from engines.alarm_engine.alarm_service import alarm_service
+            alarm_service.stop()
+        except Exception:
+            pass
         inference_worker_manager.stop_all()
         recording_manager.stop_all()
         playback_controller.stop()
         stream_manager.stop_all()
+        try:
+            from web.server import stop_lan_server
+            stop_lan_server()
+        except Exception:
+            pass
         worker_manager.shutdown()
         db_manager.close()
         event.accept()
@@ -350,7 +379,7 @@ class MainWindow(QMainWindow):
 def run_desktop_app() -> int:
     """Initializes and runs the PySide6 Qt application event loop."""
     app = QApplication.instance()
-    if not app:
+    if not isinstance(app, QApplication):
         app = QApplication(sys.argv)
 
     # Apply Dark Surveillance QSS Theme
@@ -358,6 +387,15 @@ def run_desktop_app() -> int:
 
     # Run Bootstrap Sequence
     bootstrap_application()
+
+    # Optional background LAN Web Server initialization
+    if "--enable-lan-web" in sys.argv or "-w" in sys.argv:
+        try:
+            from web.server import start_lan_server_thread
+            start_lan_server_thread()
+        except Exception as e:
+            from core.logging.logger import get_logger
+            get_logger("main").error("Failed to launch LAN Web Server thread: %s", e)
 
     # Launch Main Window
     window = MainWindow()

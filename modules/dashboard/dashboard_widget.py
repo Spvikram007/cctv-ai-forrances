@@ -178,7 +178,7 @@ class DashboardWidget(QWidget):
 
         self.table_events = QTableWidget(0, 5)
         self.table_events.setHorizontalHeaderLabels(["Timestamp (UTC)", "Camera", "Event Type", "Severity", "Details"])
-        self.table_events.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table_events.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table_events.setMinimumHeight(240)
         self.table_events.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table_events.setSelectionBehavior(QTableWidget.SelectRows)

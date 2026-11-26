@@ -35,13 +35,55 @@ def test_settings(tmp_path_factory) -> PlatformSettings:
     return settings
 
 
+@pytest.fixture(scope="session", autouse=True)
+def isolate_test_database(test_settings: PlatformSettings):
+    """
+    Guarantees strict isolation of the test database.
+    Prevents tests from ever reading, writing, or appending audit records
+    to the production database at 'storage/cctv_metadata.db'.
+    """
+    from database.database_manager import db_manager
+    from core.config.settings import settings
+    from core.security.rbac import rbac_service
+
+    # Save original production db path
+    orig_path = settings.database.sqlite_path
+
+    # Point global settings to temporary test database
+    test_db_path = test_settings.database.sqlite_path
+    settings.database.sqlite_path = test_db_path
+
+    # Close existing connection to production DB and initialize on isolated test DB
+    db_manager.close()
+    db_manager.config = test_settings
+    db_manager._initialize_engine()
+    db_manager.init_schema()
+
+    # Guard: Verify that db_manager is NOT pointing to the production database
+    active_db = str(db_manager.engine.url) if db_manager.engine else ""
+    prod_target = "storage/cctv_metadata.db"
+    if prod_target in active_db or "cctv_metadata.db" in active_db:
+        raise RuntimeError(
+            f"SECURITY GUARD VIOLATION: Test suite attempted to run against production database: {active_db}"
+        )
+
+    # Seed default RBAC permissions and standard roles into the isolated test DB
+    with db_manager.get_session() as session:
+        rbac_service.seed_permissions_and_roles(session)
+
+    yield test_db_path
+
+    # Teardown: close test database and restore production path configuration
+    db_manager.close()
+    settings.database.sqlite_path = orig_path
+    db_manager.config = settings
+
+
 @pytest.fixture(scope="session")
-def test_db_manager(test_settings: PlatformSettings) -> DatabaseManager:
-    """Provides an isolated database manager with temporary SQLite backend."""
-    manager = DatabaseManager(config=test_settings)
-    manager.init_schema()
-    yield manager
-    manager.close()
+def test_db_manager(isolate_test_database):
+    """Provides the isolated global db_manager singleton."""
+    from database.database_manager import db_manager
+    return db_manager
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -95,5 +137,12 @@ def pytest_sessionfinish(session, exitstatus):
             app.closeAllWindows()
             app.processEvents()
             app.quit()
+    except Exception:
+        pass
+    try:
+        import threading
+        for t in threading.enumerate():
+            if t is not threading.main_thread() and t.daemon and t.is_alive():
+                t.join(timeout=0.8)
     except Exception:
         pass

@@ -8,7 +8,8 @@ from typing import Optional, List
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QProgressBar, QTabWidget, QWidget, QComboBox, QMessageBox, QFrame
+    QProgressBar, QTabWidget, QWidget, QComboBox, QMessageBox, QFrame,
+    QAbstractItemView
 )
 from PySide6.QtCore import Qt, QThread, Signal
 
@@ -106,9 +107,9 @@ class DeviceDiscoveryDialog(QDialog):
 
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["IP Address", "MAC Address", "Manufacturer", "Model", "ONVIF Port", "Status"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         auto_layout.addWidget(self.table)
 
         btn_row = QHBoxLayout()
@@ -137,7 +138,7 @@ class DeviceDiscoveryDialog(QDialog):
         self.txt_man_rtsp_url = QLineEdit("rtsp://admin:pass@192.168.1.100:554/Streaming/Channels/101")
         self.txt_man_user = QLineEdit("admin")
         self.txt_man_pass = QLineEdit()
-        self.txt_man_pass.setEchoMode(QLineEdit.Password)
+        self.txt_man_pass.setEchoMode(QLineEdit.EchoMode.Password)
 
         f_layout.addWidget(QLabel("Camera Name:"))
         f_layout.addWidget(self.txt_man_name)
@@ -222,8 +223,21 @@ class DeviceDiscoveryDialog(QDialog):
         idx = selected_rows[0].row()
         cam = self.discovered_cams[idx]
 
-        # Register in database with encrypted password
+        # Check for duplicate camera IP and port
         with db_manager.get_session() as session:
+            existing = session.query(Device).filter(
+                Device.ip_address == cam.ip_address,
+                Device.port == cam.onvif_port,
+                Device.is_deleted == False
+            ).first()
+            if existing:
+                QMessageBox.warning(
+                    self,
+                    "Duplicate Camera",
+                    f"A camera with IP '{cam.ip_address}' on port {cam.onvif_port} is already registered as '{existing.name}'."
+                )
+                return
+
             dev = Device(
                 name=f"{cam.manufacturer} {cam.model}",
                 device_type="CAMERA",
@@ -273,6 +287,19 @@ class DeviceDiscoveryDialog(QDialog):
             return
 
         with db_manager.get_session() as session:
+            existing = session.query(Device).filter(
+                Device.ip_address == ip,
+                Device.port == 80,
+                Device.is_deleted == False
+            ).first()
+            if existing:
+                QMessageBox.warning(
+                    self,
+                    "Duplicate Camera",
+                    f"A camera with IP '{ip}' is already registered as '{existing.name}'."
+                )
+                return
+
             dev = Device(
                 name=name,
                 device_type="CAMERA",

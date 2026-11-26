@@ -369,7 +369,7 @@ class BehaviourAnalyticsWidget(QWidget):
         self.table_events = QTableWidget()
         self.table_events.setColumnCount(7)
         self.table_events.setHorizontalHeaderLabels(["Time", "Camera", "Type", "Severity", "Confidence", "Human Review", "Evidence Summary"])
-        self.table_events.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.table_events.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table_events.horizontalHeader().setStretchLastSection(True)
         self.table_events.setStyleSheet("""
             QTableWidget { background-color: #0d1117; color: #c9d1d9; border: 1px solid #30363d; gridline-color: #21262d; }

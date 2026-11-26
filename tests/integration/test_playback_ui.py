@@ -58,6 +58,8 @@ def test_timeline_widget_rendering_and_interaction(qapp):
     timeline.show()
     timeline.repaint()
     assert not timeline.isHidden()
+    timeline.close()
+    timeline.deleteLater()
 
 
 def test_playback_workspace_controls_and_grid(qapp):
@@ -96,6 +98,10 @@ def test_playback_workspace_controls_and_grid(qapp):
 
     # Repaint
     playback.repaint()
+    playback.stop()
+    playback.close()
+    playback.deleteLater()
+    qapp.processEvents()
 
 
 def test_main_window_has_playback_workspace(qapp):
@@ -108,3 +114,5 @@ def test_main_window_has_playback_workspace(qapp):
     window._switch_view(2)
     assert window.stack.currentIndex() == 2
     window.close()
+    window.deleteLater()
+    qapp.processEvents()

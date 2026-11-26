@@ -121,7 +121,7 @@ class AIDashboardWidget(QWidget):
         self.channel_table.setColumnCount(5)
         self.channel_table.setHorizontalHeaderLabels(["Channel", "Device", "FPS", "Latency", "Detections"])
         self.channel_table.horizontalHeader().setStretchLastSection(True)
-        self.channel_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.channel_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.channel_table.setStyleSheet("""
             QTableWidget { background-color: #0d1117; color: #c9d1d9;
                            border: none; gridline-color: #21262d; }
@@ -146,7 +146,7 @@ class AIDashboardWidget(QWidget):
         self.class_table.setColumnCount(2)
         self.class_table.setHorizontalHeaderLabels(["Class", "Count"])
         self.class_table.horizontalHeader().setStretchLastSection(True)
-        self.class_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.class_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.class_table.setStyleSheet("""
             QTableWidget { background-color: #0d1117; color: #c9d1d9;
                            border: none; gridline-color: #21262d; }
@@ -173,7 +173,7 @@ class AIDashboardWidget(QWidget):
         self.events_table.setColumnCount(6)
         self.events_table.setHorizontalHeaderLabels(["Time", "Channel", "Event", "Class", "Confidence", "Severity"])
         self.events_table.horizontalHeader().setStretchLastSection(True)
-        self.events_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.events_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.events_table.setStyleSheet("""
             QTableWidget { background-color: #0d1117; color: #c9d1d9;
                            border: none; gridline-color: #21262d; }

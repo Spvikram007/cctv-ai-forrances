@@ -5,6 +5,7 @@ backend authorization checking, privilege escalation prevention, and least-privi
 """
 
 from typing import Dict, Any, List, Set, Optional
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.logging.logger import get_logger
@@ -277,12 +278,20 @@ class RBACService:
                     for rp in role.permissions
                     if rp.permission
                 ]
+                user_count = sess.scalar(
+                    select(func.count())
+                    .select_from(User)
+                    .where(
+                        User.role_id == role.id,
+                        User.is_deleted.is_(False)
+                    )
+                ) or 0
                 result.append({
                     "id": role.id,
                     "name": role.name,
                     "description": role.description,
                     "is_system": role.is_system,
-                    "user_count": len(role.users),
+                    "user_count": user_count,
                     "permissions": perms,
                 })
             return result

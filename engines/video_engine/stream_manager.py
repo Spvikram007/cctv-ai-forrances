@@ -11,7 +11,7 @@ import time
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, Optional, Tuple, Callable, Any, List
+from typing import Dict, Optional, Tuple, Callable, Any, List, Set
 import numpy as np
 
 from engines.video_engine.rtsp_streamer import RTSPStreamWorker, mask_rtsp_url, validate_rtsp_url
@@ -112,6 +112,7 @@ class StreamManager:
     def __init__(self, max_channels: int = 64) -> None:
         self.max_channels = max_channels
         self._workers: Dict[str, RTSPStreamWorker] = {}
+        self._consumers: Dict[str, Set[str]] = {}
         self._lock = threading.RLock()
 
     def start_stream(
@@ -155,7 +156,96 @@ class StreamManager:
                 if worker.is_alive():
                     worker.join(timeout=3.0)
                 del self._workers[channel_id]
+                self._consumers.pop(channel_id, None)
                 bus.publish("stream.stopped", {"channel_id": channel_id})
+
+    def add_consumer(self, channel_id: str, consumer_tag: str) -> None:
+        """Registers a named consumer (e.g. desktop UI, recording, analytics) holding interest in the stream."""
+        with self._lock:
+            if channel_id not in self._consumers:
+                self._consumers[channel_id] = set()
+            self._consumers[channel_id].add(consumer_tag)
+            logger.debug("Added consumer [%s] to channel [%s]. Total consumers: %d", consumer_tag, channel_id, len(self._consumers[channel_id]))
+
+    def remove_consumer(self, channel_id: str, consumer_tag: str) -> None:
+        """Deregisters a named consumer holding interest in the stream."""
+        with self._lock:
+            if channel_id in self._consumers:
+                self._consumers[channel_id].discard(consumer_tag)
+                if not self._consumers[channel_id]:
+                    del self._consumers[channel_id]
+            logger.debug("Removed consumer [%s] from channel [%s].", consumer_tag, channel_id)
+
+    def is_stream_in_use(
+        self,
+        channel_id: str,
+        exclude_callback: Optional[Callable[[str, np.ndarray, float], None]] = None,
+        check_recent_poll: bool = True,
+        poll_threshold_sec: float = 3.0,
+    ) -> bool:
+        """
+        Determines whether an active stream worker is still needed by ANY native consumer
+        (such as desktop UI, continuous recording, or AI analytics).
+        Checks both registered consumer tags and active frame callbacks.
+        """
+        with self._lock:
+            worker = self._workers.get(channel_id)
+            if not worker or not worker.is_alive():
+                return False
+
+            # 1. Check registered consumer tags (e.g. desktop UI, recording, analytics)
+            tags = self._consumers.get(channel_id, set())
+            if len(tags) > 0:
+                return True
+
+            # 2. Check registered frame callbacks on worker
+            with worker._callbacks_lock:
+                active_cbs = [cb for cb in worker._callbacks if cb != exclude_callback]
+                if len(active_cbs) > 0:
+                    return True
+
+            # 3. Check recent direct frame polling
+            if check_recent_poll:
+                now = time.monotonic()
+                if hasattr(worker, "_last_frame_fetch_time") and (now - worker._last_frame_fetch_time) < poll_threshold_sec:
+                    return True
+
+            return False
+
+    def stop_stream_if_idle(
+        self,
+        channel_id: str,
+        exclude_callback: Optional[Callable[[str, np.ndarray, float], None]] = None
+    ) -> bool:
+        """
+        Atomically evaluates whether any native consumers or callbacks remain under self._lock.
+        If NO consumers remain, gracefully halts the worker and cleans up, returning True.
+        If consumers DO remain, leaves the worker active and returns False.
+        This provides an atomic check-and-stop operation that eliminates TOCTOU races.
+        """
+        with self._lock:
+            worker = self._workers.get(channel_id)
+            if not worker or not worker.is_alive():
+                return True
+
+            if self.is_stream_in_use(channel_id, exclude_callback=exclude_callback, check_recent_poll=True, poll_threshold_sec=3.0):
+                logger.info("Stream [%s] will not stop: active native consumers/callbacks/polls remain.", channel_id)
+                return False
+
+            # Genuinely idle: atomically stop worker and cleanup under self._lock
+            logger.info("Stream [%s] confirmed idle. Halting upstream worker.", channel_id)
+            worker.stop()
+            if worker.is_alive():
+                worker.join(timeout=1.5)
+            del self._workers[channel_id]
+            self._consumers.pop(channel_id, None)
+            bus.publish("stream.stopped", {"channel_id": channel_id})
+            return True
+
+    def get_stream_consumers(self, channel_id: str) -> List[str]:
+        """Returns the list of active consumer tags for a channel."""
+        with self._lock:
+            return list(self._consumers.get(channel_id, set()))
 
     def get_latest_frame(self, channel_id: str) -> Optional[Tuple[np.ndarray, float]]:
         """Retrieves newest frame for a channel."""
@@ -273,6 +363,7 @@ class StreamManager:
                 if worker.is_alive():
                     worker.join(timeout=2.0)
             self._workers.clear()
+            self._consumers.clear()
         logger.info("All RTSP stream workers successfully stopped.")
 
 

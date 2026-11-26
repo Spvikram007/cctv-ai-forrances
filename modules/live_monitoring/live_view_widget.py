@@ -113,7 +113,7 @@ class PTZControlWidget(QFrame):
         # 3. Speed Slider
         speed_row = QHBoxLayout()
         speed_row.addWidget(QLabel("Speed:"))
-        self.slider_speed = QSlider(Qt.Horizontal)
+        self.slider_speed = QSlider(Qt.Orientation.Horizontal)
         self.slider_speed.setRange(10, 100)
         self.slider_speed.setValue(50)
         speed_row.addWidget(self.slider_speed)
@@ -306,7 +306,7 @@ class LiveViewWidget(QWidget):
         main_layout.addWidget(toolbar)
 
         # 2. Main Content Splitter (Grid on Left, PTZ Panel on Right)
-        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setStyleSheet("QSplitter::handle { background-color: #30363d; }")
 
         # Video Grid Container
@@ -338,8 +338,8 @@ class LiveViewWidget(QWidget):
         QShortcut(QKeySequence("5"), self, lambda: self.set_grid_layout(25))
         QShortcut(QKeySequence("6"), self, lambda: self.set_grid_layout(36))
         QShortcut(QKeySequence("7"), self, lambda: self.set_grid_layout(64))
-        QShortcut(QKeySequence(Qt.Key_Space), self, self._toggle_pause)
-        QShortcut(QKeySequence(Qt.Key_Escape), self, self._on_escape_pressed)
+        QShortcut(QKeySequence(Qt.Key.Key_Space), self, self._toggle_pause)
+        QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_escape_pressed)
 
     def _on_escape_pressed(self) -> None:
         if self._maximized_tile_id:
@@ -408,8 +408,10 @@ class LiveViewWidget(QWidget):
 
         for i in reversed(range(self.grid_layout.count())):
             item = self.grid_layout.itemAt(i)
-            if item and item.widget():
-                item.widget().setParent(None)
+            if item:
+                w = item.widget()
+                if w:
+                    w.setParent(None)
 
         cols_map = {1: 1, 4: 2, 9: 3, 16: 4, 25: 5, 36: 6, 64: 8}
         cols = cols_map.get(count, int(np.ceil(np.sqrt(count))))
@@ -421,8 +423,10 @@ class LiveViewWidget(QWidget):
                 col = idx % cols
                 self.grid_layout.addWidget(tile, row, col)
                 tile.show()
+                stream_manager.add_consumer(tile.channel_id, f"desktop_live_tile_{tile.channel_id}")
             else:
                 tile.hide()
+                stream_manager.remove_consumer(tile.channel_id, f"desktop_live_tile_{tile.channel_id}")
 
     def set_grid_layout(self, count: int) -> None:
         """Sets active multi-camera grid layout."""
@@ -445,8 +449,10 @@ class LiveViewWidget(QWidget):
             self._maximized_tile_id = channel_id
             for i in reversed(range(self.grid_layout.count())):
                 item = self.grid_layout.itemAt(i)
-                if item and item.widget():
-                    item.widget().setParent(None)
+                if item:
+                    w = item.widget()
+                    if w:
+                        w.setParent(None)
 
             target_tile = next((t for t in self.tiles if t.channel_id == channel_id), self.tiles[0])
             self.grid_layout.addWidget(target_tile, 0, 0)
@@ -481,9 +487,17 @@ class LiveViewWidget(QWidget):
             if telemetry:
                 tile.update_telemetry(telemetry)
 
+    def closeEvent(self, event) -> None:
+        """Deregisters desktop live view consumers on widget closure."""
+        for tile in self.tiles:
+            stream_manager.remove_consumer(tile.channel_id, f"desktop_live_tile_{tile.channel_id}")
+        super().closeEvent(event)
+
     def _toggle_test_streams(self) -> None:
         """Starts or stops synthetic surveillance test streams."""
         if stream_manager.active_stream_count() > 0:
+            for tile in self.tiles:
+                stream_manager.remove_consumer(tile.channel_id, f"desktop_live_tile_{tile.channel_id}")
             stream_manager.stop_all()
             self.btn_test_streams.setText("Start Test Streams (1-4)")
             self.btn_test_streams.setStyleSheet("background-color: #238636; color: #ffffff; font-weight: 600; padding: 4px 12px; border-radius: 4px;")
@@ -497,6 +511,7 @@ class LiveViewWidget(QWidget):
                     channel_name=f"Perimeter Cam {i}",
                     is_test_stream=True,
                 )
+                stream_manager.add_consumer(ch_id, f"desktop_live_tile_{ch_id}")
                 ptz_controller.register_camera(channel_id=ch_id, is_simulated=True)
             self.btn_test_streams.setText("Stop Active Streams")
             self.btn_test_streams.setStyleSheet("background-color: #f85149; color: #ffffff; font-weight: 600; padding: 4px 12px; border-radius: 4px;")

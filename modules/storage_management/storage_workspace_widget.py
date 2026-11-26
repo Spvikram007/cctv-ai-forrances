@@ -8,6 +8,7 @@ multi-tier archival, and retention policy management.
 """
 
 import os
+import time
 import threading
 from typing import Dict, Any, List, Optional
 from PySide6.QtWidgets import (
@@ -58,6 +59,9 @@ class StorageManagementWidget(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
+        self._shutdown_event = threading.Event()
+        self._workers: List[threading.Thread] = []
+        self._workers_lock = threading.Lock()
         self._init_ui()
         self._load_telemetry()
 
@@ -70,7 +74,7 @@ class StorageManagementWidget(QWidget):
         header_layout = QHBoxLayout()
         title_box = QVBoxLayout()
         title = QLabel("Enterprise Storage & Failover Management")
-        title.setFont(QFont("Segoe UI", 16, QFont.Bold))
+        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         title.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
 
         subtitle = QLabel("F-047: Local Disks, Hardware RAID, SMB/NFS NAS Shares, Automated Failover & Multi-Tier Archival")
@@ -140,18 +144,18 @@ class StorageManagementWidget(QWidget):
 
     def _create_kpi_card(self, title: str, value: str, subtitle: str) -> QFrame:
         card = QFrame()
-        card.setFrameShape(QFrame.StyledPanel)
+        card.setFrameShape(QFrame.Shape.StyledPanel)
         card.setStyleSheet(SurveillanceTheme.get_kpi_card_style())
         layout = QVBoxLayout(card)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(4)
 
         lbl_title = QLabel(title)
-        lbl_title.setFont(QFont("Segoe UI", 8, QFont.Bold))
+        lbl_title.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
         lbl_title.setStyleSheet(f"color: {SurveillanceTheme.TEXT_MUTED};")
 
         lbl_val = QLabel(value)
-        lbl_val.setFont(QFont("Segoe UI", 16, QFont.Bold))
+        lbl_val.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         lbl_val.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         lbl_val.setObjectName("kpi_value")
 
@@ -173,7 +177,7 @@ class StorageManagementWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         lbl = QLabel("Active Surveillance Storage Volumes")
-        lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         layout.addWidget(lbl)
 
@@ -182,7 +186,7 @@ class StorageManagementWidget(QWidget):
         self.tbl_volumes.setHorizontalHeaderLabels([
             "Volume Name", "Mount Path", "Type", "Filesystem", "Total (GB)", "Free (GB)", "Used %", "Status"
         ])
-        self.tbl_volumes.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_volumes.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_volumes.setStyleSheet(SurveillanceTheme.get_table_style())
         layout.addWidget(self.tbl_volumes)
         return widget
@@ -193,7 +197,7 @@ class StorageManagementWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         lbl = QLabel("Host Logical Drives & Physical Disks")
-        lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         layout.addWidget(lbl)
 
@@ -202,7 +206,7 @@ class StorageManagementWidget(QWidget):
         self.tbl_disks.setHorizontalHeaderLabels([
             "Drive / Path", "Volume Name", "Filesystem", "Total Space", "Free Space", "NTFS/ReFS Flags"
         ])
-        self.tbl_disks.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_disks.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_disks.setStyleSheet(SurveillanceTheme.get_table_style())
         layout.addWidget(self.tbl_disks)
         return widget
@@ -214,7 +218,7 @@ class StorageManagementWidget(QWidget):
 
         header = QHBoxLayout()
         lbl = QLabel("RAID Arrays & Resiliency Sets")
-        lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         header.addWidget(lbl)
         header.addStretch()
@@ -230,7 +234,7 @@ class StorageManagementWidget(QWidget):
         self.tbl_raid.setHorizontalHeaderLabels([
             "Array ID", "Name", "RAID Level", "Status", "Capacity", "Rebuild %", "Telemetry Source"
         ])
-        self.tbl_raid.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_raid.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_raid.setStyleSheet(SurveillanceTheme.get_table_style())
         layout.addWidget(self.tbl_raid)
         return widget
@@ -241,7 +245,7 @@ class StorageManagementWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         lbl = QLabel("Camera Storage Allocations & Target Pools")
-        lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         layout.addWidget(lbl)
 
@@ -250,7 +254,7 @@ class StorageManagementWidget(QWidget):
         self.tbl_alloc.setHorizontalHeaderLabels([
             "Camera Channel", "Assigned Pool", "Primary Volume", "Failover Target", "Quota (GB)", "Priority"
         ])
-        self.tbl_alloc.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_alloc.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_alloc.setStyleSheet(SurveillanceTheme.get_table_style())
         layout.addWidget(self.tbl_alloc)
         return widget
@@ -262,7 +266,7 @@ class StorageManagementWidget(QWidget):
 
         header = QHBoxLayout()
         lbl = QLabel("Network-Attached Storage (SMB/CIFS & NFS)")
-        lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         header.addWidget(lbl)
         header.addStretch()
@@ -278,7 +282,7 @@ class StorageManagementWidget(QWidget):
         self.tbl_nas.setHorizontalHeaderLabels([
             "Profile Name", "Protocol", "Host / Server", "Share Name", "Mount Point", "Status", "Latency"
         ])
-        self.tbl_nas.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_nas.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_nas.setStyleSheet(SurveillanceTheme.get_table_style())
         layout.addWidget(self.tbl_nas)
         return widget
@@ -290,7 +294,7 @@ class StorageManagementWidget(QWidget):
 
         header = QHBoxLayout()
         lbl = QLabel("Storage Failover Events & Cryptographic Recording Manifests")
-        lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         header.addWidget(lbl)
         header.addStretch()
@@ -306,7 +310,7 @@ class StorageManagementWidget(QWidget):
         self.tbl_failover.setHorizontalHeaderLabels([
             "Camera Channel", "Primary Volume", "Failover Target", "Triggered At", "Status", "Gap (s)", "Reason"
         ])
-        self.tbl_failover.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_failover.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_failover.setStyleSheet(SurveillanceTheme.get_table_style())
         layout.addWidget(self.tbl_failover)
         return widget
@@ -318,7 +322,7 @@ class StorageManagementWidget(QWidget):
 
         header = QHBoxLayout()
         lbl = QLabel("Multi-Tier Archival Jobs & Retention Policies")
-        lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         header.addWidget(lbl)
         header.addStretch()
@@ -334,7 +338,7 @@ class StorageManagementWidget(QWidget):
         self.tbl_archival.setHorizontalHeaderLabels([
             "Job ID", "Target Tier", "Files Migrated", "Bytes Transferred", "Failed Copies", "Status", "Completed At"
         ])
-        self.tbl_archival.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_archival.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_archival.setStyleSheet(SurveillanceTheme.get_table_style())
         layout.addWidget(self.tbl_archival)
         return widget
@@ -345,7 +349,7 @@ class StorageManagementWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         lbl = QLabel("Capacity Consumption Forecasting")
-        lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl.setStyleSheet(f"color: {SurveillanceTheme.TEXT_PRIMARY};")
         layout.addWidget(lbl)
 
@@ -354,7 +358,7 @@ class StorageManagementWidget(QWidget):
         self.tbl_forecast.setHorizontalHeaderLabels([
             "Volume Name", "Total Capacity", "Free Space", "Est. Daily Burn", "Days to 85% Warning", "Days to Exhaustion"
         ])
-        self.tbl_forecast.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_forecast.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_forecast.setStyleSheet(SurveillanceTheme.get_table_style())
         layout.addWidget(self.tbl_forecast)
         return widget
@@ -364,11 +368,25 @@ class StorageManagementWidget(QWidget):
     # -------------------------------------------------------------------------
     def _load_telemetry(self) -> None:
         """Asynchronously queries database and storage adapters to populate UI tables."""
-        threading.Thread(target=self._query_and_populate, daemon=True).start()
+        if self._shutdown_event.is_set():
+            return
+        with self._workers_lock:
+            self._workers = [t for t in self._workers if t.is_alive()]
+            t = threading.Thread(
+                target=self._query_and_populate,
+                daemon=True,
+                name="StorageTelemetryWorker"
+            )
+            self._workers.append(t)
+            t.start()
 
     def _query_and_populate(self) -> None:
         try:
+            if self._shutdown_event.is_set():
+                return
             enterprise_storage_service.initialize()
+            if self._shutdown_event.is_set():
+                return
             with db_manager.get_session() as session:
                 volumes = session.query(StorageVolume).filter_by(is_deleted=False).all()
                 failovers = (
@@ -436,17 +454,51 @@ class StorageManagementWidget(QWidget):
                     "completed": j.completed_at.strftime("%Y-%m-%d %H:%M:%S") if j.completed_at else "In Progress",
                 } for j in arch_jobs]
 
-            # Adapter-level probes
-            disks = enterprise_storage_service.local_adapter.discover_local_volumes()
+            if self._shutdown_event.is_set():
+                return
+
+            # Adapter-level probes with cooperative cancellation check
+            disks = enterprise_storage_service.local_adapter.discover_local_volumes(
+                stop_check=self._shutdown_event.is_set
+            )
+            if self._shutdown_event.is_set():
+                return
             arrays = enterprise_storage_service.raid_adapter.get_all_arrays()
+            if self._shutdown_event.is_set():
+                return
             forecasts = enterprise_storage_service.forecast_capacity().get("forecasts", [])
 
-            # Update UI on main thread via invokeMethod or timer
-            QTimer.singleShot(0, lambda: self._apply_telemetry_to_ui(
+            if self._shutdown_event.is_set():
+                return
+
+            # Update UI on main thread safely
+            QTimer.singleShot(0, lambda: self._safe_apply_telemetry_to_ui(
                 v_data, f_data, a_data, n_data, j_data, disks, arrays, forecasts
             ))
         except Exception as e:
-            logger.error("Error loading storage telemetry: %s", e)
+            if not self._shutdown_event.is_set():
+                logger.error("Error loading storage telemetry: %s", e)
+
+    def _safe_apply_telemetry_to_ui(
+        self,
+        volumes: List[Dict[str, Any]],
+        failovers: List[Dict[str, Any]],
+        allocations: List[Dict[str, Any]],
+        nas_profiles: List[Dict[str, Any]],
+        arch_jobs: List[Dict[str, Any]],
+        disks: List[Dict[str, Any]],
+        arrays: List[Any],
+        forecasts: List[Dict[str, Any]],
+    ) -> None:
+        if self._shutdown_event.is_set():
+            return
+        try:
+            self._apply_telemetry_to_ui(
+                volumes, failovers, allocations, nas_profiles, arch_jobs, disks, arrays, forecasts
+            )
+        except RuntimeError:
+            # Widget or child widget was deleted in C++
+            pass
 
     def _apply_telemetry_to_ui(
         self,
@@ -464,9 +516,15 @@ class StorageManagementWidget(QWidget):
         free_gb = sum(v["free_gb"] for v in volumes)
         online_count = sum(1 for v in volumes if v["status"] == "ONLINE")
 
-        self.kpi_total_cap.findChild(QLabel, "kpi_value").setText(f"{total_gb:.1f} GB")
-        self.kpi_free_space.findChild(QLabel, "kpi_value").setText(f"{free_gb:.1f} GB")
-        self.kpi_volumes.findChild(QLabel, "kpi_value").setText(f"{online_count} / {len(volumes)}")
+        lbl_cap = self.kpi_total_cap.findChild(QLabel, "kpi_value")
+        if lbl_cap:
+            lbl_cap.setText(f"{total_gb:.1f} GB")
+        lbl_free = self.kpi_free_space.findChild(QLabel, "kpi_value")
+        if lbl_free:
+            lbl_free.setText(f"{free_gb:.1f} GB")
+        lbl_vols = self.kpi_volumes.findChild(QLabel, "kpi_value")
+        if lbl_vols:
+            lbl_vols.setText(f"{online_count} / {len(volumes)}")
 
         raid_status = "OPTIMAL"
         for arr in arrays:
@@ -474,10 +532,14 @@ class StorageManagementWidget(QWidget):
                 raid_status = "DEGRADED"
             elif getattr(arr, "status", None) == RAIDStatus.FAILED:
                 raid_status = "FAILED"
-        self.kpi_raid_status.findChild(QLabel, "kpi_value").setText(raid_status)
+        lbl_raid = self.kpi_raid_status.findChild(QLabel, "kpi_value")
+        if lbl_raid:
+            lbl_raid.setText(raid_status)
 
         active_failover_count = sum(1 for f in failovers if f["status"] == FailoverStatus.ACTIVE.value)
-        self.kpi_failovers.findChild(QLabel, "kpi_value").setText(str(active_failover_count))
+        lbl_fail = self.kpi_failovers.findChild(QLabel, "kpi_value")
+        if lbl_fail:
+            lbl_fail.setText(str(active_failover_count))
 
         # Populate Volumes Table
         self.tbl_volumes.setRowCount(len(volumes))
@@ -575,14 +637,68 @@ class StorageManagementWidget(QWidget):
     # -------------------------------------------------------------------------
     def _on_audit_clicked(self) -> None:
         """Executes full read/write and capacity audit across all storage volumes."""
+        if self._shutdown_event.is_set():
+            return
         self.btn_audit.setEnabled(False)
         self.lbl_status.setText("Auditing storage volume metrics and filesystem capabilities...")
 
         def _task():
-            enterprise_storage_service.volume_monitor.audit_all_volumes()
-            QTimer.singleShot(0, lambda: self._on_audit_complete())
+            try:
+                if self._shutdown_event.is_set():
+                    return
+                enterprise_storage_service.volume_monitor.audit_all_volumes()
+                if self._shutdown_event.is_set():
+                    return
+                QTimer.singleShot(0, lambda: self._safe_on_audit_complete())
+            except Exception as e:
+                if not self._shutdown_event.is_set():
+                    logger.error("Error during storage integrity audit: %s", e)
 
-        threading.Thread(target=_task, daemon=True).start()
+        with self._workers_lock:
+            self._workers = [t for t in self._workers if t.is_alive()]
+            t = threading.Thread(target=_task, daemon=True, name="StorageAuditWorker")
+            self._workers.append(t)
+            t.start()
+
+    def _safe_on_audit_complete(self) -> None:
+        if self._shutdown_event.is_set():
+            return
+        try:
+            self._on_audit_complete()
+        except RuntimeError:
+            pass
+
+    def stop(self, timeout: float = 2.5) -> bool:
+        """
+        Gracefully signals all background workers to stop and waits for completion
+        against a shared overall deadline. Never discards alive thread references.
+        Returns True if all workers stopped cleanly, False if any thread timed out.
+        """
+        self._shutdown_event.set()
+        deadline = time.monotonic() + max(0.0, timeout)
+        all_stopped = True
+
+        with self._workers_lock:
+            for t in list(self._workers):
+                if t.is_alive():
+                    remaining = max(0.0, deadline - time.monotonic())
+                    t.join(timeout=remaining)
+                    if t.is_alive():
+                        logger.warning(
+                            "Storage worker '%s' (ident=%s) failed to terminate within %.2fs deadline.",
+                            t.name, getattr(t, "ident", None), timeout
+                        )
+                        all_stopped = False
+
+            # Retain any worker that failed to terminate; prune only cleanly terminated ones
+            self._workers = [t for t in self._workers if t.is_alive()]
+
+        return all_stopped
+
+    def closeEvent(self, event) -> None:
+        """Handles widget close event by stopping active workers."""
+        self.stop()
+        super().closeEvent(event)
 
     def _on_audit_complete(self) -> None:
         self.btn_audit.setEnabled(True)
@@ -597,9 +713,9 @@ class StorageManagementWidget(QWidget):
                 self,
                 "Confirm RAID Rebuild",
                 f"Are you sure you want to initiate a rebuild on array '{array_id}'?\nThis will perform sustained high-I/O operations on member disks.",
-                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
-            if confirm == QMessageBox.Yes:
+            if confirm == QMessageBox.StandardButton.Yes:
                 success, msg = enterprise_storage_service.raid_adapter.execute_rebuild(array_id, operator="Administrator", role="ADMIN")
                 if success:
                     QMessageBox.information(self, "Rebuild Initiated", msg)
@@ -659,9 +775,9 @@ class StorageManagementWidget(QWidget):
             self,
             "Retention Pruning",
             "Execute retention pruning on recordings older than 30 days?\n\nEvidence Lock Guarantee: Recordings marked as locked forensic evidence will NEVER be deleted.",
-            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
-        if confirm == QMessageBox.Yes:
+        if confirm == QMessageBox.StandardButton.Yes:
             freed = enterprise_storage_service.prune_expired_recordings(retention_days=30)
             QMessageBox.information(self, "Pruning Complete", f"Retention pruning completed.\n{freed} expired unlocked recordings deleted.\nAll locked evidence preserved.")
             self._load_telemetry()

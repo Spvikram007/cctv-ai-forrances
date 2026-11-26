@@ -142,8 +142,8 @@ class UserManagementWidget(QWidget):
             "Username", "Full Name", "Assigned Role", "Email", "Status",
             "Failed Attempts", "Last Login", "Actions"
         ])
-        self.table_users.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table_users.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeToContents)
+        self.table_users.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_users.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
         self.table_users.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_users.setAlternatingRowColors(True)
         self.table_users.setStyleSheet("""
@@ -175,7 +175,7 @@ class UserManagementWidget(QWidget):
         self.table_roles = QTableWidget()
         self.table_roles.setColumnCount(3)
         self.table_roles.setHorizontalHeaderLabels(["Role Name", "Type", "Users"])
-        self.table_roles.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table_roles.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table_roles.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_roles.setAlternatingRowColors(True)
         self.table_roles.itemSelectionChanged.connect(self._on_role_selected)
@@ -194,9 +194,9 @@ class UserManagementWidget(QWidget):
 
         self.tree_permissions = QTreeWidget()
         self.tree_permissions.setHeaderLabels(["Permission / Subsystem Capability", "Scope Code", "Status"])
-        self.tree_permissions.header().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.tree_permissions.header().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.tree_permissions.header().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.tree_permissions.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.tree_permissions.header().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.tree_permissions.header().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.tree_permissions.setStyleSheet("""
             QTreeWidget { background-color: #0d1117; color: #c9d1d9; border: 1px solid #30363d; }
             QTreeWidget::item { padding: 4px; }
@@ -219,8 +219,8 @@ class UserManagementWidget(QWidget):
         self.table_sessions.setHorizontalHeaderLabels([
             "Session ID", "Username", "Role", "IP Address", "User Agent", "Expires At", "Action"
         ])
-        self.table_sessions.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table_sessions.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        self.table_sessions.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_sessions.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
         self.table_sessions.setAlternatingRowColors(True)
         layout.addWidget(self.table_sessions)
         return widget

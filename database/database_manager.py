@@ -4,6 +4,7 @@ Supports PostgreSQL for high-scale enterprise deployments and resilient
 automatic SQLite WAL mode fallback for robust offline local operations.
 """
 
+import os
 import time
 from pathlib import Path
 from typing import Generator, Dict, Any, Optional
@@ -57,6 +58,13 @@ class DatabaseManager:
         # 2. Resilient Fallback to SQLite WAL mode
         if self.engine is None:
             sqlite_path = Path(db_conf.sqlite_path)
+
+            # Security Isolation Guard: Prevent tests from ever connecting to production database
+            if "PYTEST_CURRENT_TEST" in os.environ and "cctv_metadata.db" in sqlite_path.name:
+                raise RuntimeError(
+                    f"SECURITY GUARD VIOLATION: Pytest execution attempted to connect to production database: {sqlite_path}"
+                )
+
             sqlite_path.parent.mkdir(parents=True, exist_ok=True)
             db_url = f"sqlite:///{sqlite_path.as_posix()}"
             
@@ -85,7 +93,7 @@ class DatabaseManager:
     def init_schema(self) -> None:
         """Initializes all registered metadata tables if they do not exist."""
         if self.engine is None:
-            raise RuntimeError("Database engine is not initialized.")
+            self._initialize_engine()
         logger.info("Verifying and creating database schema for backend [%s]...", self.active_backend)
         Base.metadata.create_all(bind=self.engine)
 
@@ -202,7 +210,8 @@ class DatabaseManager:
     def get_session(self) -> Generator[Session, None, None]:
         """Context manager for safe transactional database sessions."""
         if self.SessionLocal is None:
-            raise RuntimeError("Database session maker is not initialized.")
+            self._initialize_engine()
+        assert self.SessionLocal is not None
         session: Session = self.SessionLocal()
         try:
             yield session
@@ -241,6 +250,8 @@ class DatabaseManager:
         """Disposes connection pool on application shutdown."""
         if self.engine:
             self.engine.dispose()
+            self.engine = None
+            self.SessionLocal = None
             logger.info("Database connection pool disposed.")
 
 

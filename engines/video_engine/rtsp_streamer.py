@@ -99,6 +99,7 @@ class RTSPStreamWorker(threading.Thread):
         # Bounded frame buffer: automatically drops oldest frame when full
         self._frame_buffer: deque = deque(maxlen=max_buffer_size)
         self._buffer_lock = threading.Lock()
+        self._last_frame_fetch_time: float = 0.0
 
         self._stop_event = threading.Event()
         self._pause_event = threading.Event()
@@ -169,7 +170,8 @@ class RTSPStreamWorker(threading.Thread):
         return self._stop_event.is_set()
 
     def get_latest_frame(self) -> Optional[Tuple[np.ndarray, float]]:
-        """Retrieves the newest frame without blocking."""
+        """Retrieves the newest frame without blocking and updates fetch heartbeat."""
+        self._last_frame_fetch_time = time.monotonic()
         with self._buffer_lock:
             if self._frame_buffer:
                 return self._frame_buffer[-1]

@@ -5,6 +5,7 @@ to guarantee camera and NVR credentials are never stored in plaintext.
 """
 
 import os
+import re
 import base64
 import hashlib
 from typing import Optional
@@ -57,3 +58,27 @@ class CredentialVault:
 
 # Global vault singleton
 credential_vault = CredentialVault()
+
+
+def mask_rtsp_url(url: Optional[str]) -> Optional[str]:
+    """
+    Masks credentials embedded in RTSP / HTTP stream URLs to prevent credential leakage.
+    e.g. 'rtsp://admin:pass123@192.168.1.100:554/live' -> 'rtsp://***:***@192.168.1.100:554/live'
+         'rtsp://admin@192.168.1.100:554/live' -> 'rtsp://***@192.168.1.100:554/live'
+         'rtsp://192.168.1.100:554/live' -> 'rtsp://192.168.1.100:554/live'
+    """
+    if not url:
+        return url
+    masked = re.sub(r"://([^/@:]+):([^/@:]+)@", "://***:***@", url)
+    masked = re.sub(r"://([^/@:]+)@", "://***@", masked)
+    return masked
+
+
+def strip_rtsp_credentials(url: Optional[str]) -> Optional[str]:
+    """
+    Completely removes any embedded credentials from RTSP / HTTP stream URLs.
+    e.g. 'rtsp://admin:pass123@192.168.1.100:554/live' -> 'rtsp://192.168.1.100:554/live'
+    """
+    if not url:
+        return url
+    return re.sub(r"(://)([^/@]+)@", r"\1", url)

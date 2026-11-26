@@ -43,7 +43,7 @@ def scrub_sensitive_dict(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Recursively redacts passwords, tokens, and private keys from audit payloads."""
     if not data or not isinstance(data, dict):
         return {}
-    cleaned = {}
+    cleaned: Dict[str, Any] = {}
     for k, v in data.items():
         if any(sens in k.lower() for sens in SENSITIVE_KEYS):
             cleaned[k] = "[REDACTED_SECRET]"

@@ -116,7 +116,7 @@ class ANPRWorkspaceWidget(QWidget):
         self.tbl_detections.setHorizontalHeaderLabels([
             "Time (UTC)", "Camera", "Vehicle", "Plate Text", "Confidence", "Format", "Status"
         ])
-        self.tbl_detections.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_detections.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_detections.setStyleSheet("background-color: #0d1117; color: #c9d1d9; gridline-color: #21262d;")
         self.tbl_detections.itemSelectionChanged.connect(self._on_row_selected)
         splitter.addWidget(self.tbl_detections)

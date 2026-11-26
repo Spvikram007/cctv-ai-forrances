@@ -1,0 +1,17 @@
+
+python-interpreter-path = "C:\\Python314\\python.exe"
+python-version = "3.14"
+
+project-includes = ["**/*.py"]
+project-excludes = [
+    "**/.venv/**",
+    "**/venv/**",
+    "**/__pycache__/**",
+    "**/node_modules/**"
+]
+
+search-path = [
+    ".",
+    "C:\\Python314\\Lib\\site-packages",
+    "C:\\Users\\poova\\AppData\\Roaming\\Python\\Python314\\site-packages"
+]

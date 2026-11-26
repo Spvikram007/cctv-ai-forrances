@@ -356,9 +356,10 @@ class PlaybackWidget(QWidget):
         # Clear existing layout
         while self.grid_layout.count():
             item = self.grid_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.setParent(None)
+            if item is not None:
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None)
 
         self.tiles.clear()
         total_slots = rows * cols
@@ -413,13 +414,16 @@ class PlaybackWidget(QWidget):
         self._update_display_frames(target_dt)
 
     def _on_playback_tick(self) -> None:
-        clock = playback_controller.master_clock
-        if playback_controller.state == PlaybackState.PLAYING:
-            clock = playback_controller.update_clock_tick()
-            self.timeline.set_current_time(clock)
-            self._update_display_frames(clock)
+        try:
+            clock = playback_controller.master_clock
+            if playback_controller.state == PlaybackState.PLAYING:
+                clock = playback_controller.update_clock_tick()
+                self.timeline.set_current_time(clock)
+                self._update_display_frames(clock)
 
-        self.lbl_master_clock.setText(f"Current: {clock.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            self.lbl_master_clock.setText(f"Current: {clock.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        except RuntimeError:
+            pass
 
     def _update_display_frames(self, target_dt: datetime) -> None:
         for tile in self.tiles:
@@ -448,3 +452,14 @@ class PlaybackWidget(QWidget):
         primary_ch = self.active_channels[0] if self.active_channels else "ch_1"
         dialog = ClipExportDialog(channel_id=primary_ch, default_start=playback_controller.master_clock, parent=self)
         dialog.exec()
+
+    def stop(self) -> None:
+        """Stops the playback timer and controller safely."""
+        if hasattr(self, "play_timer") and self.play_timer.isActive():
+            self.play_timer.stop()
+        playback_controller.stop()
+
+    def closeEvent(self, event) -> None:
+        """Handles widget closure by stopping active playback timers."""
+        self.stop()
+        super().closeEvent(event)

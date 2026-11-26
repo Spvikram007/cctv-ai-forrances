@@ -276,7 +276,7 @@ class AlarmManagementWidget(QWidget):
             "Alarm ID", "Last Detected", "Severity", "Priority", "Category",
             "Camera / Device", "Title & Incident Details", "Status", "Operator", "Count", "Escalation"
         ])
-        self.table_alarms.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.table_alarms.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table_alarms.horizontalHeader().setStretchLastSection(True)
         self.table_alarms.setColumnWidth(0, 90)
         self.table_alarms.setColumnWidth(1, 140)

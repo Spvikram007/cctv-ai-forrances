@@ -134,7 +134,7 @@ class VideoForensicsWidget(QWidget):
         self.tbl_evidence = QTableWidget()
         self.tbl_evidence.setColumnCount(4)
         self.tbl_evidence.setHorizontalHeaderLabels(["Case #", "Type", "File Name", "SHA-256 (Preview)"])
-        self.tbl_evidence.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_evidence.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_evidence.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl_evidence.setStyleSheet("background-color: #161b22; color: #c9d1d9; border: 1px solid #30363d;")
         self.tbl_evidence.itemSelectionChanged.connect(self._on_evidence_selected)
@@ -218,7 +218,7 @@ class VideoForensicsWidget(QWidget):
         self.tbl_discontinuities = QTableWidget()
         self.tbl_discontinuities.setColumnCount(4)
         self.tbl_discontinuities.setHorizontalHeaderLabels(["Frame #", "Time (sec)", "Type", "Description"])
-        self.tbl_discontinuities.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_discontinuities.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_discontinuities.setStyleSheet("background-color: #161b22; color: #c9d1d9; border: 1px solid #30363d;")
         layout.addWidget(self.tbl_discontinuities)
 
@@ -252,7 +252,7 @@ class VideoForensicsWidget(QWidget):
         self.tbl_custody = QTableWidget()
         self.tbl_custody.setColumnCount(5)
         self.tbl_custody.setHorizontalHeaderLabels(["Timestamp (UTC)", "Operator", "Role", "Action", "Hash Link"])
-        self.tbl_custody.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_custody.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_custody.setStyleSheet("background-color: #161b22; color: #c9d1d9; border: 1px solid #30363d;")
         layout.addWidget(self.tbl_custody)
 

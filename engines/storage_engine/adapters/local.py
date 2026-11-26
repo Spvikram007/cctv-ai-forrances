@@ -10,7 +10,7 @@ import uuid
 import shutil
 import ctypes
 from pathlib import Path
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Dict, Any, Tuple, Optional, List, Callable
 
 from engines.storage_engine.enums import StorageType, HealthStatus
 from engines.storage_engine.adapters.base import StorageAdapter, StorageMetrics
@@ -163,11 +163,25 @@ class LocalStorageAdapter(StorageAdapter):
             logger.error("Failed to ensure directory %s: %s", directory_path, e)
             return False
 
-    def get_capabilities(self, volume_path: str) -> Dict[str, Any]:
+    def get_capabilities(self, volume_path: str, stop_check: Optional[Callable[[], bool]] = None) -> Dict[str, Any]:
         """
         Queries Windows filesystem capabilities using Win32 GetVolumeInformationW.
         Identifies NTFS vs. ReFS, encryption, compression, and read-only flags.
         """
+        if stop_check and stop_check():
+            return {
+                "volume_path": volume_path,
+                "drive_root": volume_path,
+                "filesystem": "NTFS",
+                "volume_name": "",
+                "serial_number": 0,
+                "max_component_length": 255,
+                "is_read_only": False,
+                "supports_encryption": True,
+                "supports_compression": True,
+                "is_refs": False,
+            }
+
         p = Path(volume_path).resolve()
         drive_root = p.anchor or str(p)
         if not drive_root.endswith("\\"):
@@ -185,6 +199,9 @@ class LocalStorageAdapter(StorageAdapter):
             "supports_compression": True,
             "is_refs": False,
         }
+
+        if stop_check and stop_check():
+            return caps
 
         if sys.platform == "win32":
             try:
@@ -225,16 +242,26 @@ class LocalStorageAdapter(StorageAdapter):
 
         return caps
 
-    def discover_local_volumes(self) -> List[Dict[str, Any]]:
+    def discover_local_volumes(self, stop_check: Optional[Callable[[], bool]] = None) -> List[Dict[str, Any]]:
         """Discovers all mounted logical volumes and drive letters on the host."""
         discovered = []
         if sys.platform == "win32":
             try:
                 bitmask = ctypes.windll.kernel32.GetLogicalDrives()
                 for i in range(26):
+                    if stop_check and stop_check():
+                        break
                     if bitmask & (1 << i):
                         drive_letter = f"{chr(65 + i)}:\\"
-                        caps = self.get_capabilities(drive_letter)
+                        # Filter out empty CD-ROM/optical drives, remote/network shares, and non-existent roots to prevent Win32 I/O blocking
+                        drive_type = ctypes.windll.kernel32.GetDriveTypeW(drive_letter)
+                        if drive_type in (0, 1, 4, 5):
+                            continue
+                        if stop_check and stop_check():
+                            break
+                        caps = self.get_capabilities(drive_letter, stop_check=stop_check)
+                        if stop_check and stop_check():
+                            break
                         try:
                             usage = shutil.disk_usage(drive_letter)
                             discovered.append({

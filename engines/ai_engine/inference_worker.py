@@ -243,12 +243,31 @@ class InferenceWorkerManager:
             )
             self._workers[channel_id] = worker
             worker.start()
+
+            # Register consumer ownership and frame callback on StreamManager
+            try:
+                from engines.video_engine.stream_manager import stream_manager
+                stream_manager.add_consumer(channel_id, f"ai_inference_{channel_id}")
+                def _ai_hook(ch: str, frame: np.ndarray, ts: float) -> None:
+                    self.push_frame(ch, frame, ts)
+                setattr(worker, "_ai_hook", _ai_hook)
+                stream_manager.register_frame_callback(channel_id, _ai_hook)
+            except Exception as e:
+                logger.debug("Notice registering StreamManager hook for AI worker [%s]: %s", channel_id, e)
+
             return worker
 
     def stop_worker(self, channel_id: str) -> None:
         with self._lock:
             worker = self._workers.get(channel_id)
             if worker:
+                try:
+                    from engines.video_engine.stream_manager import stream_manager
+                    stream_manager.remove_consumer(channel_id, f"ai_inference_{channel_id}")
+                    if hasattr(worker, "_ai_hook"):
+                        stream_manager.unregister_frame_callback(channel_id, getattr(worker, "_ai_hook"))
+                except Exception:
+                    pass
                 worker.stop()
                 if worker.is_alive():
                     worker.join(timeout=3.0)
@@ -276,6 +295,14 @@ class InferenceWorkerManager:
     def stop_all(self) -> None:
         logger.info("Stopping all AI inference workers...")
         with self._lock:
+            try:
+                from engines.video_engine.stream_manager import stream_manager
+                for ch, worker in list(self._workers.items()):
+                    stream_manager.remove_consumer(ch, f"ai_inference_{ch}")
+                    if hasattr(worker, "_ai_hook"):
+                        stream_manager.unregister_frame_callback(ch, getattr(worker, "_ai_hook"))
+            except Exception:
+                pass
             for worker in self._workers.values():
                 worker.stop()
             for worker in self._workers.values():

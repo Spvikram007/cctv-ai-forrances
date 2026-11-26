@@ -119,7 +119,7 @@ class FaceWorkspaceWidget(QWidget):
         self.tbl_matches.setHorizontalHeaderLabels([
             "Timestamp", "Camera", "Candidate Name", "Watchlist Category", "Similarity", "Verification", "Actions"
         ])
-        self.tbl_matches.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_matches.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_matches.setStyleSheet("background-color: #0d1117; color: #c9d1d9; gridline-color: #21262d;")
         splitter.addWidget(self.tbl_matches)
 
@@ -230,7 +230,7 @@ class FaceWorkspaceWidget(QWidget):
         self.tbl_identities.setHorizontalHeaderLabels([
             "Identity Code", "Full Name", "Category", "Department", "Status", "Actions"
         ])
-        self.tbl_identities.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_identities.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_identities.setStyleSheet("background-color: #0d1117; color: #c9d1d9; gridline-color: #21262d;")
         layout.addWidget(self.tbl_identities)
 
@@ -257,7 +257,7 @@ class FaceWorkspaceWidget(QWidget):
         self.tbl_audit.setHorizontalHeaderLabels([
             "Timestamp (UTC)", "Action", "Operator / User", "Identity ID", "Details"
         ])
-        self.tbl_audit.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_audit.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_audit.setStyleSheet("background-color: #0d1117; color: #c9d1d9; gridline-color: #21262d;")
         layout.addWidget(self.tbl_audit)
 

@@ -328,7 +328,7 @@ class NetworkIntelligenceWidget(QWidget):
         self.tbl_inventory.setHorizontalHeaderLabels([
             "IP Address", "MAC Address", "Vendor / OUI", "Device Type", "Status", "Latency (ms)", "Open Ports", "Details"
         ])
-        self.tbl_inventory.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_inventory.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_inventory.setStyleSheet(
             "QTableWidget { background: #0d1117; color: #c9d1d9; gridline-color: #21262d; border: 1px solid #30363d; } QHeaderView::section { background: #161b22; color: #8b949e; padding: 6px; border: 1px solid #30363d; font-weight: bold; }"
         )
@@ -407,7 +407,7 @@ class NetworkIntelligenceWidget(QWidget):
         self.tbl_telemetry.setHorizontalHeaderLabels([
             "IP Address", "Avg Latency (ms)", "Mean Latency Var (ms)", "Packet Loss (%)", "Measured BW (Mbps)", "Bitrate Source", "Uptime (%)", "Congestion State"
         ])
-        self.tbl_telemetry.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_telemetry.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_telemetry.setStyleSheet(
             "QTableWidget { background: #0d1117; color: #c9d1d9; gridline-color: #21262d; border: 1px solid #30363d; } QHeaderView::section { background: #161b22; color: #8b949e; padding: 6px; border: 1px solid #30363d; font-weight: bold; }"
         )
@@ -444,7 +444,7 @@ class NetworkIntelligenceWidget(QWidget):
         self.tbl_diagnostics.setHorizontalHeaderLabels([
             "IP Address", "Protocol", "Port", "Health Status", "Root Cause", "Technical Details"
         ])
-        self.tbl_diagnostics.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_diagnostics.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_diagnostics.setStyleSheet(
             "QTableWidget { background: #0d1117; color: #c9d1d9; gridline-color: #21262d; border: 1px solid #30363d; } QHeaderView::section { background: #161b22; color: #8b949e; padding: 6px; border: 1px solid #30363d; font-weight: bold; }"
         )
@@ -487,7 +487,7 @@ class NetworkIntelligenceWidget(QWidget):
         self.tbl_cve.setHorizontalHeaderLabels([
             "Host IP", "CVE ID", "CVSS", "Vendor Profile", "Confidence", "Advisory Date", "Vulnerability Details", "Mitigation", "Source URL"
         ])
-        self.tbl_cve.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_cve.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tbl_cve.setStyleSheet(
             "QTableWidget { background: #0d1117; color: #c9d1d9; gridline-color: #21262d; border: 1px solid #30363d; } QHeaderView::section { background: #161b22; color: #8b949e; padding: 6px; border: 1px solid #30363d; font-weight: bold; }"
         )

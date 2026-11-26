@@ -48,18 +48,17 @@ class RecordingManager:
             self._recorders[channel_id] = worker
             worker.start()
 
+            # Register consumer ownership on StreamManager
+            stream_manager.add_consumer(channel_id, f"recorder_{channel_id}")
+
             # Attach frame callback to StreamManager so frames flow automatically to recorder
             def frame_hook(ch: str, frame: np.ndarray, ts: float) -> None:
                 rec = self._recorders.get(ch)
                 if rec and rec.is_alive():
                     rec.push_frame(frame, ts)
 
-            active_stream = stream_manager.get_stream(channel_id) if hasattr(stream_manager, "get_stream") else None
-            # Also register in worker directly if available
-            with stream_manager._lock:
-                stream_worker = stream_manager._workers.get(channel_id)
-                if stream_worker:
-                    stream_worker.add_frame_callback(frame_hook)
+            setattr(worker, "_frame_hook", frame_hook)
+            stream_manager.register_frame_callback(channel_id, frame_hook)
 
             bus.publish("recording.started", {"channel_id": channel_id, "mode": recording_type})
             return worker
@@ -69,6 +68,9 @@ class RecordingManager:
         with self._lock:
             worker = self._recorders.get(channel_id)
             if worker:
+                stream_manager.remove_consumer(channel_id, f"recorder_{channel_id}")
+                if hasattr(worker, "_frame_hook"):
+                    stream_manager.unregister_frame_callback(channel_id, getattr(worker, "_frame_hook"))
                 worker.stop()
                 if worker.is_alive():
                     worker.join(timeout=3.0)
@@ -95,7 +97,10 @@ class RecordingManager:
         """Stops all active recorders cleanly during application shutdown."""
         logger.info("Stopping all active recording workers...")
         with self._lock:
-            for worker in self._recorders.values():
+            for ch, worker in list(self._recorders.items()):
+                stream_manager.remove_consumer(ch, f"recorder_{ch}")
+                if hasattr(worker, "_frame_hook"):
+                    stream_manager.unregister_frame_callback(ch, getattr(worker, "_frame_hook"))
                 worker.stop()
             for worker in self._recorders.values():
                 if worker.is_alive():
